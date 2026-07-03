@@ -329,9 +329,9 @@ export default function Home() {
         {/* Static-export app is served under basePath '/app', so plain <img>
             src is NOT auto-prefixed — reference the asset at /app/…. */}
         <img
-          src="/app/ebco-logo.svg"
-          alt="EBCO PVT LTD"
-          className="h-9 w-auto shrink-0"
+          src="/app/ebco-logo.png"
+          alt="Ebco Pvt Ltd — Simplifying lives."
+          className="h-11 w-auto shrink-0"
         />
         <span className="h-6 w-px shrink-0 bg-slate-200" aria-hidden="true" />
         <span className="text-[15px] font-semibold tracking-tight text-slate-900">
