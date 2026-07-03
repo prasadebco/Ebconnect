@@ -18,7 +18,7 @@ from db.models import (
     ConversationDataset,
     Message,
 )
-from profiling.profiler import profile_csv
+from profiling.profiler import profile_csv, profile_xlsx
 
 router = APIRouter()
 
@@ -46,8 +46,13 @@ def create_dataset(file: UploadFile = File(...), session: Session = Depends(get_
     if not file or not file.filename:
         raise api_error("BAD_REQUEST", "Missing file", 400)
     name = file.filename
-    if not name.lower().endswith(".csv"):
-        raise api_error("BAD_REQUEST", "Only CSV files are supported in Phase 1", 400)
+    lname = name.lower()
+    if lname.endswith(".csv"):
+        kind = "csv"
+    elif lname.endswith((".xlsx", ".xls")):
+        kind = "xlsx"
+    else:
+        raise api_error("BAD_REQUEST", "Unsupported file type — upload a .csv or .xlsx", 400)
 
     settings = get_settings()
     dataset_id = str(uuid4())
@@ -77,54 +82,79 @@ def create_dataset(file: UploadFile = File(...), session: Session = Depends(get_
         dest.unlink(missing_ok=True)
         raise api_error("BAD_REQUEST", "Uploaded file is empty", 400)
 
-    cache_path = str(dest.with_suffix(dest.suffix + ".parquet"))
+    # Normalise every dataset (csv or xlsx) into a list of profiled sheets so
+    # the sandbox can read each sheet as a fast parquet frame.
     try:
-        prof = profile_csv(str(dest), cache_path=cache_path, sample_rows=settings.sample_rows)
+        if kind == "csv":
+            cache_path = str(dest.with_suffix(dest.suffix + ".parquet"))
+            prof = profile_csv(str(dest), cache_path=cache_path, sample_rows=settings.sample_rows)
+            sheet_profiles = [
+                {
+                    "name": "__default__",
+                    "row_count": prof["row_count"],
+                    "columns": prof["columns"],
+                    "cache_path": prof.get("cache_path"),
+                }
+            ]
+        else:
+            xprof = profile_xlsx(
+                str(dest),
+                cache_dir=str(dest.parent),
+                cache_prefix=f"{dataset_id}",
+                sample_rows=settings.sample_rows,
+            )
+            sheet_profiles = xprof["sheets"]
     except Exception as exc:
         dest.unlink(missing_ok=True)
         raise api_error("UNPROCESSABLE", f"Could not parse/profile the file: {exc}", 422)
 
+    default_row_count = sheet_profiles[0]["row_count"]
     now = datetime.now(timezone.utc)
     dataset = Dataset(
         id=dataset_id,
         name=name,
         file_path=str(dest.resolve()),
-        cache_path=prof.get("cache_path"),
-        kind="csv",
+        cache_path=sheet_profiles[0].get("cache_path"),
+        kind=kind,
         size_bytes=size,
-        row_count=prof["row_count"],
+        row_count=default_row_count,
         created_at=now,
         last_used_at=now,
     )
     session.add(dataset)
 
-    sheet = DatasetSheet(dataset_id=dataset_id, name="__default__", row_count=prof["row_count"])
-    session.add(sheet)
-    session.flush()
-
-    columns = []
-    for c in prof["columns"]:
-        col = DatasetColumn(
+    all_columns: list[DatasetColumn] = []
+    for sp in sheet_profiles:
+        sheet = DatasetSheet(
             dataset_id=dataset_id,
-            sheet_id=sheet.id,
-            name=c["name"],
-            dtype=c["dtype"],
-            null_count=c["null_count"],
-            distinct_count=c.get("distinct_count"),
-            min_value=c.get("min_value"),
-            max_value=c.get("max_value"),
-            samples=c.get("samples"),
+            name=sp["name"],
+            row_count=sp["row_count"],
+            cache_path=sp.get("cache_path"),
         )
-        session.add(col)
-        columns.append(col)
+        session.add(sheet)
+        session.flush()
+        for c in sp["columns"]:
+            col = DatasetColumn(
+                dataset_id=dataset_id,
+                sheet_id=sheet.id,
+                name=c["name"],
+                dtype=c["dtype"],
+                null_count=c["null_count"],
+                distinct_count=c.get("distinct_count"),
+                min_value=c.get("min_value"),
+                max_value=c.get("max_value"),
+                samples=c.get("samples"),
+            )
+            session.add(col)
+            all_columns.append(col)
 
     return {
         "id": dataset_id,
         "name": name,
-        "kind": "csv",
-        "row_count": prof["row_count"],
-        "sheets": [{"name": "__default__", "row_count": prof["row_count"]}],
-        "columns": [_column_payload(c) for c in columns],
+        "kind": kind,
+        "row_count": default_row_count,
+        "sheets": [{"name": sp["name"], "row_count": sp["row_count"]} for sp in sheet_profiles],
+        "columns": [_column_payload(c) for c in all_columns],
     }
 
 
@@ -214,6 +244,9 @@ def get_dataset(dataset_id: str, session: Session = Depends(get_session)) -> dic
         .filter(DatasetSheet.dataset_id == dataset_id)
         .all()
     )
+    cols_by_sheet: dict[str | None, list] = {}
+    for c in cols:
+        cols_by_sheet.setdefault(c.sheet_id, []).append(c)
     return {
         "id": dataset.id,
         "name": dataset.name,
@@ -222,6 +255,13 @@ def get_dataset(dataset_id: str, session: Session = Depends(get_session)) -> dic
         "size_bytes": dataset.size_bytes,
         "created_at": dataset.created_at.isoformat(),
         "last_used_at": dataset.last_used_at.isoformat(),
-        "sheets": [{"name": s.name, "row_count": s.row_count} for s in sheets],
+        "sheets": [
+            {
+                "name": s.name,
+                "row_count": s.row_count,
+                "columns": [_column_payload(c) for c in cols_by_sheet.get(s.id, [])],
+            }
+            for s in sheets
+        ],
         "columns": [_column_payload(c) for c in cols],
     }

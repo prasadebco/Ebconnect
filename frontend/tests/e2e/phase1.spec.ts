@@ -25,8 +25,10 @@ test('primary journey: upload → profile → ask → answer + chart', async ({
   const dropzone = page.getByTestId('dropzone')
   await expect(dropzone).toBeVisible()
 
-  // Labelled stubs are present and marked "Coming soon".
-  await expect(page.getByTestId('coming-soon-badge').first()).toBeVisible()
+  // The dropzone accepts spreadsheets (CSV + Excel from Phase 3).
+  await expect(
+    page.getByTestId('file-input'),
+  ).toHaveAttribute('accept', /\.xlsx/)
 
   // Upload the fixture CSV through the hidden file input.
   await page.getByTestId('file-input').setInputFiles(FIXTURE)

@@ -40,10 +40,28 @@ def _compact_profile(profile: dict) -> str:
 
 
 def _data_context(state: AgentState) -> str:
-    profile = state.get("profile", {})
+    profile = state.get("profile", {}) or {}
     sample = state.get("row_sample", [])
+    if "frames" in profile:
+        # multi-frame (Excel sheets / attached files) — each frame is a pandas
+        # DataFrame variable named exactly as shown. Only capped samples appear.
+        parts = [
+            "MULTIPLE DATA FRAMES are available as pandas DataFrame variables "
+            "(use the EXACT frame name shown; join them as needed). `df` is the "
+            "primary/selected frame."
+        ]
+        samples = sample if isinstance(sample, dict) else {}
+        for name, fp in profile["frames"].items():
+            parts.append(f"\nFRAME `{name}`:\n" + _compact_profile(fp))
+            s = samples.get(name, [])
+            parts.append(
+                f"SAMPLE ROWS for `{name}` (capped at {len(s)}, NOT the full frame):\n"
+                + json.dumps(s, ensure_ascii=False)
+            )
+        return "\n".join(parts)
     ctx = "DATA PROFILE:\n" + _compact_profile(profile)
-    ctx += f"\n\nSAMPLE ROWS (capped at {len(sample)}, NOT the full dataset):\n"
+    n = len(sample) if isinstance(sample, list) else 0
+    ctx += f"\n\nSAMPLE ROWS (capped at {n}, NOT the full dataset):\n"
     ctx += json.dumps(sample, ensure_ascii=False)
     return ctx
 

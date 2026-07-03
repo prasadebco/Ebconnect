@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ComingSoonBadge } from './ComingSoon'
 
 interface Props {
   onFile: (file: File) => void
@@ -24,8 +23,8 @@ export function UploadDropzone({ onFile, loading, error }: Props) {
         Ask your spreadsheet a question
       </h2>
       <p className="mb-7 text-sm leading-relaxed text-slate-500">
-        Upload a CSV. It is profiled and analyzed locally — only the profile and
-        a small sample ever leave your server.
+        Upload a CSV or Excel workbook. It is profiled and analyzed locally —
+        only the profile and a small sample ever leave your server.
       </p>
 
       <div
@@ -58,7 +57,7 @@ export function UploadDropzone({ onFile, loading, error }: Props) {
           ref={inputRef}
           data-testid="file-input"
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="hidden"
           onChange={(e) => pick(e.target.files?.[0])}
         />
@@ -73,17 +72,19 @@ export function UploadDropzone({ onFile, loading, error }: Props) {
               📄
             </div>
             <p className="mt-4 text-sm font-medium text-slate-700">
-              Drop a CSV here, or click to browse
+              Drop a CSV or Excel file here, or click to browse
             </p>
-            <p className="mt-1 text-xs text-slate-400">CSV up to ~100MB</p>
+            <p className="mt-1 text-xs text-slate-400">
+              CSV or .xlsx up to ~100MB
+            </p>
           </>
         )}
       </div>
 
       <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
         <span className="inline-flex items-center">
-          Add another file · Excel sheets
-          <ComingSoonBadge label="P3" />
+          Multi-sheet Excel workbooks and multi-file joins are supported once a
+          dataset is open.
         </span>
       </div>
 

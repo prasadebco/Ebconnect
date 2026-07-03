@@ -1,9 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import type { AnswerEvent, UsageEvent } from '@/lib/types'
+import { downloadExport } from '@/lib/api'
 import { AnswerChart } from './AnswerChart'
 import { AnswerTable } from './AnswerTable'
-import { ComingSoonBadge } from './ComingSoon'
 
 export interface ChatTurn {
   id: string
@@ -27,7 +28,44 @@ function fmtElapsed(ms: number): string {
   return `${s.toFixed(1)}s`
 }
 
-export function ChatMessage({ turn }: { turn: ChatTurn }) {
+interface ChatMessageProps {
+  turn: ChatTurn
+  // Phase-3 wiring: the conversation the turn belongs to (for export URLs) and
+  // a callback to submit a follow-up chip as the next question.
+  conversationId?: string | null
+  onFollowup?: (question: string) => void
+}
+
+export function ChatMessage({
+  turn,
+  conversationId,
+  onFollowup,
+}: ChatMessageProps) {
+  const [showCode, setShowCode] = useState(false)
+  const [exporting, setExporting] = useState<null | 'csv' | 'png'>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
+
+  async function handleExport(format: 'csv' | 'png') {
+    if (!conversationId || !turn.answer?.message_id || exporting) return
+    setExporting(format)
+    setExportError(null)
+    try {
+      const filename = `result-${turn.answer.message_id.slice(0, 8)}.${format}`
+      await downloadExport(
+        conversationId,
+        turn.answer.message_id,
+        format,
+        filename,
+      )
+    } catch (e) {
+      setExportError(
+        e instanceof Error ? e.message : `Couldn't export ${format}.`,
+      )
+    } finally {
+      setExporting(null)
+    }
+  }
+
   if (turn.role === 'user') {
     return (
       <div className="flex justify-end" data-testid="user-message">
@@ -102,47 +140,102 @@ export function ChatMessage({ turn }: { turn: ChatTurn }) {
             {turn.answer.chart && <AnswerChart spec={turn.answer.chart} />}
             {turn.answer.table && <AnswerTable table={turn.answer.table} />}
 
-            {/* Answer toolbar — Phase-1 stubs */}
+            {/* Answer toolbar — Show code + Export (Phase 3, real) */}
             <div
               data-testid="answer-toolbar"
-              className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-400"
+              className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500"
             >
+              {turn.answer.code && (
+                <button
+                  type="button"
+                  data-testid="show-code-toggle"
+                  aria-expanded={showCode}
+                  onClick={() => setShowCode((v) => !v)}
+                  className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 font-medium transition hover:bg-slate-50"
+                >
+                  {showCode ? '</> Hide code' : '</> Show code'}
+                </button>
+              )}
               <button
                 type="button"
-                disabled
-                data-testid="show-code-stub"
-                className="inline-flex cursor-not-allowed items-center rounded-md border border-slate-200 px-2.5 py-1 opacity-70"
-                title="Coming soon — reveal the analysis code"
+                data-testid="export-csv"
+                disabled={
+                  !turn.answer.table ||
+                  !conversationId ||
+                  exporting === 'csv'
+                }
+                onClick={() => handleExport('csv')}
+                title={
+                  turn.answer.table
+                    ? 'Download the result table as CSV'
+                    : 'No table to export'
+                }
+                className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {'</> Show code'}
-                <ComingSoonBadge label="P3" />
+                {exporting === 'csv' ? 'Exporting…' : '⬇ Export CSV'}
               </button>
               <button
                 type="button"
-                disabled
-                data-testid="export-stub"
-                className="inline-flex cursor-not-allowed items-center rounded-md border border-slate-200 px-2.5 py-1 opacity-70"
-                title="Coming soon — export result as CSV/PNG"
+                data-testid="export-png"
+                disabled={
+                  !turn.answer.chart ||
+                  !conversationId ||
+                  exporting === 'png'
+                }
+                onClick={() => handleExport('png')}
+                title={
+                  turn.answer.chart
+                    ? 'Download the chart as PNG'
+                    : 'No chart to export'
+                }
+                className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                ⬇ Export
-                <ComingSoonBadge label="P3" />
+                {exporting === 'png' ? 'Exporting…' : '⬇ Export PNG'}
               </button>
             </div>
 
-            {/* Follow-up suggestion chips — stub */}
-            <div
-              data-testid="followup-stub"
-              className="mt-2.5 flex flex-wrap items-center gap-2 opacity-70"
-            >
-              <span className="text-[11px] text-slate-400">Suggested follow-ups</span>
-              <ComingSoonBadge label="P3" />
-              <span className="cursor-not-allowed rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-[11px] text-slate-400">
-                Break that down by month
-              </span>
-              <span className="cursor-not-allowed rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-[11px] text-slate-400">
-                Show the top 5
-              </span>
-            </div>
+            {exportError && (
+              <div
+                data-testid="export-error"
+                className="mt-2 text-[11px] text-red-600"
+              >
+                {exportError}
+              </div>
+            )}
+
+            {/* Collapsible analysis code — hidden (clean) by default */}
+            {turn.answer.code && showCode && (
+              <pre
+                data-testid="code-block"
+                className="mt-2.5 max-h-96 overflow-auto rounded-lg border border-slate-200 bg-slate-900 p-3 font-mono text-[12px] leading-relaxed text-slate-100"
+              >
+                <code>{turn.answer.code}</code>
+              </pre>
+            )}
+
+            {/* Follow-up suggestion chips (Phase 3, real) */}
+            {turn.answer.followups && turn.answer.followups.length > 0 && (
+              <div
+                data-testid="followup-list"
+                className="mt-3 flex flex-wrap items-center gap-2"
+              >
+                <span className="text-[11px] text-slate-400">
+                  Suggested follow-ups
+                </span>
+                {turn.answer.followups.slice(0, 3).map((q, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    data-testid="followup-chip"
+                    disabled={!onFollowup}
+                    onClick={() => onFollowup?.(q)}
+                    className="rounded-full border border-accent-200 bg-accent-50/60 px-2.5 py-0.5 text-[11px] font-medium text-accent-700 transition hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

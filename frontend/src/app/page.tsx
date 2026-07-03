@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  attachDataset,
   deleteDataset,
   getConversation,
   getDataset,
@@ -18,6 +19,7 @@ import type {
   ConversationSummary,
   Dataset,
   DatasetSummary,
+  Frame,
   Message,
   UsageEvent,
 } from '@/lib/types'
@@ -29,6 +31,50 @@ import { UploadDropzone } from '@/components/UploadDropzone'
 
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+// A multi-sheet workbook defaults to its first sheet; a single-sheet CSV has
+// no picker, so no sheet_name is sent (null).
+function defaultSheet(ds: Dataset): string | null {
+  const sheets = ds.sheets ?? []
+  return sheets.length > 1 ? sheets[0].name : null
+}
+
+// Read an attached-frame list off a conversation detail defensively — the
+// backend may nest it under `frames` on the detail or the conversation.
+function framesFromDetail(detail: {
+  conversation?: unknown
+  frames?: unknown
+}): Frame[] {
+  const candidates = [
+    (detail as { frames?: unknown }).frames,
+    (detail.conversation as { frames?: unknown } | undefined)?.frames,
+  ]
+  for (const c of candidates) {
+    if (Array.isArray(c)) {
+      const frames = c
+        .map((f): Frame | null => {
+          if (!f || typeof f !== 'object') return null
+          const o = f as Record<string, unknown>
+          const dataset_id = String(o.dataset_id ?? o.id ?? '')
+          const frame_alias = String(o.frame_alias ?? o.alias ?? '')
+          if (!dataset_id && !frame_alias) return null
+          return {
+            dataset_id,
+            frame_alias,
+            dataset_name:
+              typeof o.dataset_name === 'string' ? o.dataset_name : undefined,
+            name: typeof o.name === 'string' ? o.name : undefined,
+            row_count:
+              typeof o.row_count === 'number' ? o.row_count : undefined,
+            is_primary: Boolean(o.is_primary) || frame_alias === 'df',
+          }
+        })
+        .filter((f): f is Frame => f !== null && !f.is_primary)
+      return frames
+    }
+  }
+  return []
 }
 
 // Rebuild a persisted usage line from a stored message (nested or flat).
@@ -100,6 +146,12 @@ export default function Home() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
+  // Phase 3: selected Excel sheet + attached frames for multi-file joins.
+  const [selectedSheet, setSelectedSheet] = useState<string | null>(null)
+  const [frames, setFrames] = useState<Frame[]>([])
+  const [attaching, setAttaching] = useState(false)
+  const [attachError, setAttachError] = useState<string | null>(null)
+
   // Persistent library + conversation history (Phase 2).
   const [library, setLibrary] = useState<DatasetSummary[]>([])
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
@@ -128,15 +180,22 @@ export default function Home() {
     setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
   }, [])
 
+  // Make a dataset active: reset the sheet picker to its default sheet.
+  const applyDataset = useCallback((ds: Dataset) => {
+    setDataset(ds)
+    setSelectedSheet(defaultSheet(ds))
+  }, [])
+
   async function handleUpload(file: File) {
     setUploading(true)
     setUploadError(null)
     try {
       const ds = await uploadDataset(file)
-      setDataset(ds)
+      applyDataset(ds)
       // Auto-open a chat over the new dataset.
       const conv = await openConversation(ds.id)
       setConversation(conv)
+      setFrames([])
       setTurns([])
       // New upload joins the persistent library immediately.
       await refreshLibrary()
@@ -156,8 +215,9 @@ export default function Home() {
     setUploading(true)
     try {
       const ds = await getDataset(id)
-      setDataset(ds)
+      applyDataset(ds)
       setConversation(null)
+      setFrames([])
       setTurns([])
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Could not open dataset')
@@ -177,9 +237,10 @@ export default function Home() {
       const dsId = detail.conversation.primary_dataset_id
       if (dsId !== dataset?.id) {
         const ds = await getDataset(dsId)
-        setDataset(ds)
+        applyDataset(ds)
       }
       setConversation(detail.conversation)
+      setFrames(framesFromDetail(detail))
       setTurns(messagesToTurns(detail.messages))
     } catch (e) {
       setUploadError(
@@ -204,11 +265,63 @@ export default function Home() {
       if (dataset?.id === id) {
         setDataset(null)
         setConversation(null)
+        setSelectedSheet(null)
+        setFrames([])
         setTurns([])
       }
       await refreshLibrary()
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Could not delete dataset')
+    }
+  }
+
+  // Ensure a conversation exists over the active dataset, opening one lazily
+  // (used by both the query flow and the multi-file attach flow).
+  async function ensureConversation(): Promise<Conversation | null> {
+    if (conversation) return conversation
+    if (!dataset) return null
+    const conv = await openConversation(dataset.id)
+    setConversation(conv)
+    return conv
+  }
+
+  // Phase 3 — attach an existing library dataset as a named frame.
+  async function handleAttachExisting(datasetId: string, alias: string) {
+    if (attaching) return
+    setAttaching(true)
+    setAttachError(null)
+    try {
+      const conv = await ensureConversation()
+      if (!conv) return
+      const updated = await attachDataset(conv.id, datasetId, alias)
+      setFrames(updated.filter((f) => !f.is_primary))
+    } catch (e) {
+      setAttachError(
+        e instanceof Error ? e.message : 'Could not attach that file',
+      )
+    } finally {
+      setAttaching(false)
+    }
+  }
+
+  // Phase 3 — upload a brand-new file, then attach it to the conversation.
+  async function handleUploadAndAttach(file: File, alias: string) {
+    if (attaching) return
+    setAttaching(true)
+    setAttachError(null)
+    try {
+      const conv = await ensureConversation()
+      if (!conv) return
+      const ds = await uploadDataset(file)
+      const updated = await attachDataset(conv.id, ds.id, alias)
+      setFrames(updated.filter((f) => !f.is_primary))
+      await refreshLibrary()
+    } catch (e) {
+      setAttachError(
+        e instanceof Error ? e.message : 'Could not add that file',
+      )
+    } finally {
+      setAttaching(false)
     }
   }
 
@@ -263,7 +376,7 @@ export default function Home() {
 
     try {
       const stepsSeen: string[] = []
-      for await (const evt of streamQuery(conv.id, question)) {
+      for await (const evt of streamQuery(conv.id, question, selectedSheet)) {
         if (evt.type === 'step') {
           stepsSeen.push(evt.data.label)
           updateTurn(assistantId, {
@@ -369,12 +482,25 @@ export default function Home() {
               datasetName={dataset.name}
               turns={turns}
               busy={busy}
+              conversationId={conversation?.id ?? null}
               onAsk={handleAsk}
             />
           )}
         </main>
 
-        <ProfilePanel dataset={dataset} loading={uploading} />
+        <ProfilePanel
+          dataset={dataset}
+          loading={uploading}
+          selectedSheet={selectedSheet}
+          onSelectSheet={setSelectedSheet}
+          conversation={conversation}
+          frames={frames}
+          library={library}
+          attaching={attaching}
+          attachError={attachError}
+          onAttachExisting={handleAttachExisting}
+          onUploadAndAttach={handleUploadAndAttach}
+        />
       </div>
     </div>
   )

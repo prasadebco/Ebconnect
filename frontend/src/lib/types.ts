@@ -13,6 +13,21 @@ export interface DatasetColumn {
 export interface DatasetSheet {
   name: string
   row_count: number
+  // Multi-sheet workbooks (P3) may carry per-sheet column profiles; read
+  // defensively — a CSV / single-sheet response omits this.
+  columns?: DatasetColumn[]
+}
+
+// An attached frame in a multi-file conversation (P3). The backend's attach
+// response / conversation detail may vary in field names, so consumers read
+// this defensively.
+export interface Frame {
+  dataset_id: string
+  frame_alias: string
+  dataset_name?: string
+  name?: string
+  row_count?: number
+  is_primary?: boolean
 }
 
 export interface Dataset {

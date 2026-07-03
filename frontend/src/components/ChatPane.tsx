@@ -7,10 +7,17 @@ interface Props {
   datasetName: string
   turns: ChatTurn[]
   busy: boolean
+  conversationId: string | null
   onAsk: (question: string) => void
 }
 
-export function ChatPane({ datasetName, turns, busy, onAsk }: Props) {
+export function ChatPane({
+  datasetName,
+  turns,
+  busy,
+  conversationId,
+  onAsk,
+}: Props) {
   const [value, setValue] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -46,7 +53,11 @@ export function ChatPane({ datasetName, turns, busy, onAsk }: Props) {
         ) : (
           turns.map((t) => (
             <div key={t.id} data-testid={t.past ? 'past-turn' : undefined}>
-              <ChatMessage turn={t} />
+              <ChatMessage
+                turn={t}
+                conversationId={conversationId}
+                onFollowup={busy ? undefined : onAsk}
+              />
             </div>
           ))
         )}

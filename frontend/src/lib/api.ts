@@ -7,6 +7,7 @@ import type {
   ConversationSummary,
   Dataset,
   DatasetSummary,
+  Frame,
   StreamEvent,
 } from './types'
 
@@ -77,6 +78,85 @@ export async function openConversation(
   return (await res.json()) as Conversation
 }
 
+// ── Phase 3: multi-file attach + export ────────────────────────────────
+
+// Normalise the attach / conversation frame payload, which may arrive as a
+// bare array of frames or wrapped as { frames: [...] }.
+function normaliseFrames(payload: unknown): Frame[] {
+  const raw = Array.isArray(payload)
+    ? payload
+    : ((payload as { frames?: unknown })?.frames ?? [])
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((f): Frame | null => {
+      if (!f || typeof f !== 'object') return null
+      const o = f as Record<string, unknown>
+      const dataset_id = String(o.dataset_id ?? o.id ?? '')
+      const frame_alias = String(o.frame_alias ?? o.alias ?? o.name ?? '')
+      if (!dataset_id && !frame_alias) return null
+      return {
+        dataset_id,
+        frame_alias,
+        dataset_name:
+          typeof o.dataset_name === 'string' ? o.dataset_name : undefined,
+        name: typeof o.name === 'string' ? o.name : undefined,
+        row_count: typeof o.row_count === 'number' ? o.row_count : undefined,
+        is_primary: Boolean(o.is_primary) || frame_alias === 'df',
+      }
+    })
+    .filter((f): f is Frame => f !== null)
+}
+
+// Attach another dataset to a conversation for multi-file joins. Returns the
+// updated frame list.
+export async function attachDataset(
+  conversationId: string,
+  datasetId: string,
+  frameAlias: string,
+): Promise<Frame[]> {
+  const res = await fetch(`/conversations/${conversationId}/attach`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset_id: datasetId, frame_alias: frameAlias }),
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return normaliseFrames(await res.json())
+}
+
+// Build the (same-origin, absolute-from-origin) export URL for an answer.
+export function exportUrl(
+  conversationId: string,
+  messageId: string,
+  format: 'csv' | 'png',
+): string {
+  return `/conversations/${conversationId}/messages/${messageId}/export?format=${format}`
+}
+
+// Download an answer's result as a file. Fetches as a blob and triggers an
+// anchor download so we surface HTTP errors cleanly instead of navigating.
+export async function downloadExport(
+  conversationId: string,
+  messageId: string,
+  format: 'csv' | 'png',
+  filename: string,
+): Promise<void> {
+  const res = await fetch(exportUrl(conversationId, messageId, format))
+  if (!res.ok) throw new Error(await parseError(res))
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  try {
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  } finally {
+    // Revoke on the next tick so the click has a chance to start the download.
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+}
+
 /**
  * POST a question and consume the SSE `text/event-stream` response.
  * EventSource can't POST, so we parse the stream manually via fetch +
@@ -85,15 +165,18 @@ export async function openConversation(
 export async function* streamQuery(
   conversationId: string,
   question: string,
+  sheetName?: string | null,
   signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
+  const body: { question: string; sheet_name?: string } = { question }
+  if (sheetName) body.sheet_name = sheetName
   const res = await fetch(`/conversations/${conversationId}/query`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
     },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify(body),
     signal,
   })
 
