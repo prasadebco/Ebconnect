@@ -68,7 +68,10 @@ def run_query(conversation_id: str, question: str) -> Iterator[tuple[str, dict]]
         frames, profile, row_sample = _build_frames_and_profile(dataset)
 
         session.add(Message(conversation_id=conversation_id, role="user", content=question, status="completed"))
-        conv.last_used_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+        _now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+        conv.last_used_at = _now
+        # bump dataset recency too so the library orders by recent use (Phase 2)
+        dataset.last_used_at = _now
 
     initial: AgentState = {
         "run_id": conversation_id,

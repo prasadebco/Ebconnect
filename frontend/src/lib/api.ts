@@ -1,7 +1,14 @@
 // Same-origin API client. The UI is served under /app/ but the API lives at
 // the origin root, so all paths are absolute-from-origin (leading slash).
 
-import type { Conversation, Dataset, StreamEvent } from './types'
+import type {
+  Conversation,
+  ConversationDetail,
+  ConversationSummary,
+  Dataset,
+  DatasetSummary,
+  StreamEvent,
+} from './types'
 
 async function parseError(res: Response): Promise<string> {
   try {
@@ -22,6 +29,40 @@ export async function uploadDataset(file: File): Promise<Dataset> {
   const res = await fetch('/datasets', { method: 'POST', body: form })
   if (!res.ok) throw new Error(await parseError(res))
   return (await res.json()) as Dataset
+}
+
+// ── Phase 2: persistent library + conversation history ─────────────────
+// All responses are BARE objects/arrays (no {data} envelope).
+
+export async function listDatasets(): Promise<DatasetSummary[]> {
+  const res = await fetch('/datasets')
+  if (!res.ok) throw new Error(await parseError(res))
+  return (await res.json()) as DatasetSummary[]
+}
+
+export async function getDataset(id: string): Promise<Dataset> {
+  const res = await fetch(`/datasets/${id}`)
+  if (!res.ok) throw new Error(await parseError(res))
+  return (await res.json()) as Dataset
+}
+
+export async function deleteDataset(id: string): Promise<void> {
+  const res = await fetch(`/datasets/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await parseError(res))
+}
+
+export async function listConversations(): Promise<ConversationSummary[]> {
+  const res = await fetch('/conversations')
+  if (!res.ok) throw new Error(await parseError(res))
+  return (await res.json()) as ConversationSummary[]
+}
+
+export async function getConversation(
+  id: string,
+): Promise<ConversationDetail> {
+  const res = await fetch(`/conversations/${id}`)
+  if (!res.ok) throw new Error(await parseError(res))
+  return (await res.json()) as ConversationDetail
 }
 
 export async function openConversation(

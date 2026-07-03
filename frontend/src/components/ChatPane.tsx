@@ -44,7 +44,11 @@ export function ChatPane({ datasetName, turns, busy, onAsk }: Props) {
             </p>
           </div>
         ) : (
-          turns.map((t) => <ChatMessage key={t.id} turn={t} />)
+          turns.map((t) => (
+            <div key={t.id} data-testid={t.past ? 'past-turn' : undefined}>
+              <ChatMessage turn={t} />
+            </div>
+          ))
         )}
       </div>
 

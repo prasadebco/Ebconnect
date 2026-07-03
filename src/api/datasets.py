@@ -4,12 +4,20 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, UploadFile, File
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from api._common import api_error
 from config.settings import get_settings
 from db.session import get_session
-from db.models import Dataset, DatasetSheet, DatasetColumn
+from db.models import (
+    Dataset,
+    DatasetSheet,
+    DatasetColumn,
+    Conversation,
+    ConversationDataset,
+    Message,
+)
 from profiling.profiler import profile_csv
 
 router = APIRouter()
@@ -118,6 +126,77 @@ def create_dataset(file: UploadFile = File(...), session: Session = Depends(get_
         "sheets": [{"name": "__default__", "row_count": prof["row_count"]}],
         "columns": [_column_payload(c) for c in columns],
     }
+
+
+@router.get("/datasets")
+def list_datasets(session: Session = Depends(get_session)) -> list:
+    """List the persistent library, ordered by most-recently-used first."""
+    rows = (
+        session.query(Dataset)
+        .order_by(desc(Dataset.last_used_at), desc(Dataset.created_at))
+        .all()
+    )
+    return [
+        {
+            "id": d.id,
+            "name": d.name,
+            "kind": d.kind,
+            "row_count": d.row_count,
+            "created_at": d.created_at.isoformat(),
+            "last_used_at": d.last_used_at.isoformat(),
+        }
+        for d in rows
+    ]
+
+
+@router.delete("/datasets/{dataset_id}")
+def delete_dataset(dataset_id: str, session: Session = Depends(get_session)) -> dict:
+    """Remove a dataset from the library, delete its raw file + parquet cache,
+    and clean up all dependent rows (conversations, messages, links, sheets,
+    columns). SQLite does not enforce ON DELETE CASCADE, so we delete explicitly.
+    """
+    dataset = session.get(Dataset, dataset_id)
+    if dataset is None:
+        raise api_error("NOT_FOUND", f"Dataset {dataset_id} not found", 404)
+
+    # remove raw file + parquet cache from disk (best-effort)
+    for p in (dataset.file_path, dataset.cache_path):
+        if p:
+            try:
+                Path(p).unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    # conversations opened over this dataset (+ their messages)
+    conv_ids = [
+        c.id
+        for c in session.query(Conversation)
+        .filter(Conversation.primary_dataset_id == dataset_id)
+        .all()
+    ]
+    if conv_ids:
+        session.query(Message).filter(Message.conversation_id.in_(conv_ids)).delete(
+            synchronize_session=False
+        )
+        session.query(Conversation).filter(Conversation.id.in_(conv_ids)).delete(
+            synchronize_session=False
+        )
+
+    # link rows attaching this dataset to any conversation (Phase 3)
+    session.query(ConversationDataset).filter(
+        ConversationDataset.dataset_id == dataset_id
+    ).delete(synchronize_session=False)
+
+    # profile rows
+    session.query(DatasetColumn).filter(
+        DatasetColumn.dataset_id == dataset_id
+    ).delete(synchronize_session=False)
+    session.query(DatasetSheet).filter(
+        DatasetSheet.dataset_id == dataset_id
+    ).delete(synchronize_session=False)
+
+    session.delete(dataset)
+    return {"deleted": True}
 
 
 @router.get("/datasets/{dataset_id}")

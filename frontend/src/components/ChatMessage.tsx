@@ -18,6 +18,8 @@ export interface ChatTurn {
   usage?: UsageEvent | null
   answer?: AnswerEvent | null
   errorMessage?: string
+  // True when this turn was reloaded from persisted history (Phase 2).
+  past?: boolean
 }
 
 function fmtElapsed(ms: number): string {

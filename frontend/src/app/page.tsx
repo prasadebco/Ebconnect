@@ -1,8 +1,26 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
-import { openConversation, streamQuery, uploadDataset } from '@/lib/api'
-import type { Conversation, Dataset } from '@/lib/types'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  deleteDataset,
+  getConversation,
+  getDataset,
+  listConversations,
+  listDatasets,
+  openConversation,
+  streamQuery,
+  uploadDataset,
+} from '@/lib/api'
+import type {
+  AnswerEvent,
+  AnswerStatus,
+  Conversation,
+  ConversationSummary,
+  Dataset,
+  DatasetSummary,
+  Message,
+  UsageEvent,
+} from '@/lib/types'
 import { ChatPane } from '@/components/ChatPane'
 import type { ChatTurn } from '@/components/ChatMessage'
 import { LibrarySidebar } from '@/components/LibrarySidebar'
@@ -13,24 +31,102 @@ function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
+// Rebuild a persisted usage line from a stored message (nested or flat).
+function usageFromMessage(m: Message): UsageEvent | null {
+  if (m.usage) return m.usage
+  if (
+    m.token_total != null ||
+    m.total_tokens != null ||
+    m.cost_usd != null
+  ) {
+    return {
+      prompt: m.token_prompt ?? m.prompt_tokens ?? 0,
+      completion: m.token_completion ?? m.completion_tokens ?? 0,
+      total: m.token_total ?? m.total_tokens ?? 0,
+      cost_usd: m.cost_usd ?? 0,
+      elapsed_ms: m.elapsed_ms ?? 0,
+    }
+  }
+  return null
+}
+
+// Reload prior turns (question + answer + chart/table) from history so a
+// reopened conversation renders exactly like it did, then continues.
+function messagesToTurns(messages: Message[]): ChatTurn[] {
+  return messages.map((m): ChatTurn => {
+    if (m.role === 'user') {
+      return {
+        id: m.id,
+        role: 'user',
+        question: m.content,
+        status: 'done',
+        steps: [],
+        past: true,
+      }
+    }
+    const status = m.status
+    const turnStatus: ChatTurn['status'] =
+      status === 'needs_clarification'
+        ? 'clarify'
+        : status === 'failed'
+          ? 'error'
+          : 'done'
+    const answer: AnswerEvent = {
+      message_id: m.id,
+      content: m.content,
+      chart: m.chart ?? null,
+      table: m.table ?? null,
+      code: m.code ?? null,
+      followups: m.followups,
+      confidence: m.confidence,
+      status: (status as AnswerStatus) ?? 'completed',
+    }
+    return {
+      id: m.id,
+      role: 'assistant',
+      status: turnStatus,
+      steps: [],
+      answer: turnStatus === 'error' ? null : answer,
+      errorMessage: turnStatus === 'error' ? m.content : undefined,
+      usage: usageFromMessage(m),
+      past: true,
+    }
+  })
+}
+
 export default function Home() {
   const [dataset, setDataset] = useState<Dataset | null>(null)
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
+  // Persistent library + conversation history (Phase 2).
+  const [library, setLibrary] = useState<DatasetSummary[]>([])
+  const [conversations, setConversations] = useState<ConversationSummary[]>([])
+  const [libLoading, setLibLoading] = useState(true)
+
   const [turns, setTurns] = useState<ChatTurn[]>([])
   const [busy, setBusy] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const updateTurn = useCallback(
-    (id: string, patch: Partial<ChatTurn>) => {
-      setTurns((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-      )
-    },
-    [],
-  )
+  const refreshLibrary = useCallback(async () => {
+    try {
+      const [ds, cs] = await Promise.all([listDatasets(), listConversations()])
+      setLibrary(ds)
+      setConversations(cs)
+    } catch {
+      // A missing/empty library must never crash the workspace.
+    }
+  }, [])
+
+  useEffect(() => {
+    setLibLoading(true)
+    refreshLibrary().finally(() => setLibLoading(false))
+  }, [refreshLibrary])
+
+  const updateTurn = useCallback((id: string, patch: Partial<ChatTurn>) => {
+    setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
+  }, [])
 
   async function handleUpload(file: File) {
     setUploading(true)
@@ -42,6 +138,8 @@ export default function Home() {
       const conv = await openConversation(ds.id)
       setConversation(conv)
       setTurns([])
+      // New upload joins the persistent library immediately.
+      await refreshLibrary()
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Upload failed')
     } finally {
@@ -49,9 +147,89 @@ export default function Home() {
     }
   }
 
-  async function handleAsk(question: string) {
-    if (!conversation) return
+  // Resume a dataset from the library: load its full profile, make it active
+  // for new questions, and start a clean chat surface (its past chats show in
+  // the sidebar and can be reopened).
+  async function handleSelectDataset(id: string) {
+    if (id === dataset?.id || busy) return
+    setUploadError(null)
+    setUploading(true)
+    try {
+      const ds = await getDataset(id)
+      setDataset(ds)
+      setConversation(null)
+      setTurns([])
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Could not open dataset')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // Reopen a past conversation → reload its full history into the chat pane,
+  // then allow a new follow-up in the SAME conversation (prior-turn context).
+  async function handleReopenConversation(convId: string) {
+    if (busy) return
     setBusy(true)
+    setUploadError(null)
+    try {
+      const detail = await getConversation(convId)
+      const dsId = detail.conversation.primary_dataset_id
+      if (dsId !== dataset?.id) {
+        const ds = await getDataset(dsId)
+        setDataset(ds)
+      }
+      setConversation(detail.conversation)
+      setTurns(messagesToTurns(detail.messages))
+    } catch (e) {
+      setUploadError(
+        e instanceof Error ? e.message : 'Could not reopen conversation',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleDeleteDataset(id: string, name: string) {
+    if (busy) return
+    if (
+      !window.confirm(
+        `Delete "${name}"? This removes the file and its chats from the library.`,
+      )
+    ) {
+      return
+    }
+    try {
+      await deleteDataset(id)
+      if (dataset?.id === id) {
+        setDataset(null)
+        setConversation(null)
+        setTurns([])
+      }
+      await refreshLibrary()
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Could not delete dataset')
+    }
+  }
+
+  async function handleAsk(question: string) {
+    if (!dataset || busy) return
+    setBusy(true)
+
+    // Lazily open a conversation if the user started from a resumed dataset.
+    let conv = conversation
+    if (!conv) {
+      try {
+        conv = await openConversation(dataset.id)
+        setConversation(conv)
+      } catch (e) {
+        setBusy(false)
+        setUploadError(
+          e instanceof Error ? e.message : 'Could not start a conversation',
+        )
+        return
+      }
+    }
 
     const userTurn: ChatTurn = {
       id: uid(),
@@ -85,7 +263,7 @@ export default function Home() {
 
     try {
       const stepsSeen: string[] = []
-      for await (const evt of streamQuery(conversation.id, question)) {
+      for await (const evt of streamQuery(conv.id, question)) {
         if (evt.type === 'step') {
           stepsSeen.push(evt.data.label)
           updateTurn(assistantId, {
@@ -136,8 +314,14 @@ export default function Home() {
     } finally {
       stopTimer()
       setBusy(false)
+      // Reflect updated last_used ordering + any newly-created conversation.
+      refreshLibrary()
     }
   }
+
+  const datasetConversations = dataset
+    ? conversations.filter((c) => c.primary_dataset_id === dataset.id)
+    : []
 
   return (
     <div className="flex h-screen flex-col bg-slate-50">
@@ -155,7 +339,16 @@ export default function Home() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <LibrarySidebar current={dataset} />
+        <LibrarySidebar
+          datasets={library}
+          activeDatasetId={dataset?.id ?? null}
+          conversations={datasetConversations}
+          activeConversationId={conversation?.id ?? null}
+          loading={libLoading}
+          onSelectDataset={handleSelectDataset}
+          onDeleteDataset={handleDeleteDataset}
+          onSelectConversation={handleReopenConversation}
+        />
 
         <main className="flex min-w-0 flex-1 flex-col">
           {!dataset ? (

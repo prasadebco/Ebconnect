@@ -1,51 +1,139 @@
 'use client'
 
-import type { Dataset } from '@/lib/types'
-import { ComingSoonBadge } from './ComingSoon'
+import type { ConversationSummary, DatasetSummary } from '@/lib/types'
+import { ConversationList } from './ConversationList'
 
-// Phase-1 STUB library sidebar. The current dataset is shown as the single
-// real entry; the full persistent-library experience (switch across days,
-// delete, conversation history) is Phase 2 and is rendered greyed + labelled.
-export function LibrarySidebar({ current }: { current: Dataset | null }) {
+function kindBadge(kind: string): string {
+  return kind?.toUpperCase() || 'CSV'
+}
+
+interface Props {
+  datasets: DatasetSummary[]
+  activeDatasetId: string | null
+  conversations: ConversationSummary[]
+  activeConversationId: string | null
+  loading: boolean
+  onSelectDataset: (id: string) => void
+  onDeleteDataset: (id: string, name: string) => void
+  onSelectConversation: (id: string) => void
+}
+
+// Phase-2: the REAL persistent library. Datasets survive restarts and days;
+// clicking one resumes it (profile + active dataset), reveals its past
+// conversations, and lets the user reopen a chat or delete the dataset.
+export function LibrarySidebar({
+  datasets,
+  activeDatasetId,
+  conversations,
+  activeConversationId,
+  loading,
+  onSelectDataset,
+  onDeleteDataset,
+  onSelectConversation,
+}: Props) {
   return (
     <aside
       data-testid="library-sidebar"
-      className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:flex"
+      className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:flex"
     >
-      <div className="flex items-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        Library
-        <ComingSoonBadge label="P2" />
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Library
+        </span>
+        <span className="text-[11px] text-slate-400">
+          {datasets.length > 0 ? datasets.length : ''}
+        </span>
       </div>
 
-      <div className="mt-3 space-y-1">
-        {current ? (
-          <div className="rounded-lg bg-accent-50 px-3 py-2.5 text-sm font-medium text-accent-800 ring-1 ring-inset ring-accent-600/10">
-            {current.name}
-            <div className="mt-0.5 text-[11px] font-normal text-accent-500">
-              {current.row_count.toLocaleString()} rows
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        {loading && datasets.length === 0 ? (
+          <div data-testid="library-loading" className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-12 animate-pulse rounded-lg bg-slate-100"
+              />
+            ))}
+          </div>
+        ) : datasets.length === 0 ? (
+          <div
+            data-testid="library-empty"
+            className="mt-6 px-2 text-center text-xs leading-relaxed text-slate-400"
+          >
+            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-lg">
+              📁
             </div>
+            Upload a CSV to get started. Your datasets collect here across
+            sessions.
           </div>
         ) : (
-          <p className="px-1 text-xs leading-relaxed text-slate-400">
-            Uploaded datasets will collect here across sessions.
-          </p>
+          <ul className="space-y-1.5">
+            {datasets.map((d) => {
+              const active = d.id === activeDatasetId
+              return (
+                <li key={d.id}>
+                  <div
+                    data-testid="library-item"
+                    data-dataset-id={d.id}
+                    className={`group relative rounded-lg ring-1 ring-inset transition ${
+                      active
+                        ? 'bg-accent-50 ring-accent-600/20'
+                        : 'bg-white ring-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSelectDataset(d.id)}
+                      className="block w-full px-3 py-2.5 pr-8 text-left"
+                    >
+                      <div
+                        className={`truncate text-[13px] font-medium ${
+                          active ? 'text-accent-800' : 'text-slate-800'
+                        }`}
+                      >
+                        {d.name}
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
+                        <span className="rounded bg-slate-100 px-1 py-px font-mono uppercase text-slate-500">
+                          {kindBadge(d.kind)}
+                        </span>
+                        <span>{d.row_count.toLocaleString()} rows</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      data-testid="dataset-delete"
+                      data-dataset-id={d.id}
+                      title={`Delete ${d.name}`}
+                      aria-label={`Delete ${d.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDeleteDataset(d.id, d.name)
+                      }}
+                      className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-md text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-500 focus:opacity-100 group-hover:opacity-100"
+                    >
+                      🗑
+                    </button>
+
+                    {active && (
+                      <div className="border-t border-accent-600/10 px-2.5 pb-2 pt-2">
+                        <ConversationList
+                          conversations={conversations}
+                          activeConversationId={activeConversationId}
+                          onSelect={onSelectConversation}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
         )}
       </div>
 
-      <div
-        aria-disabled
-        className="mt-4 space-y-2 opacity-50"
-        title="Coming soon — a persistent library across days"
-      >
-        <div className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-400">
-          Yesterday · sales_q1.csv
-        </div>
-        <div className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-400">
-          Conversations history
-        </div>
-      </div>
-
-      <div className="mt-auto pt-4 text-[11px] leading-relaxed text-slate-400">
+      <div className="border-t border-slate-100 px-4 py-3 text-[11px] leading-relaxed text-slate-400">
         Your data never leaves this server.
       </div>
     </aside>
