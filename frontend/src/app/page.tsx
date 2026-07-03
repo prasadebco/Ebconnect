@@ -140,12 +140,16 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50">
-      <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-5 py-3">
-        <span className="text-lg font-semibold tracking-tight text-gray-900">
-          📊 Spreadsheet Analyst
+    <div className="flex h-screen flex-col bg-slate-50">
+      <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-3.5 shadow-sm">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-600 text-sm text-white shadow-sm">
+          📊
         </span>
-        <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-600">
+        <span className="text-[15px] font-semibold tracking-tight text-slate-900">
+          Spreadsheet Analyst
+        </span>
+        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           Local &amp; private
         </span>
       </header>

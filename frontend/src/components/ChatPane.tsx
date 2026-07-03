@@ -28,16 +28,18 @@ export function ChatPane({ datasetName, turns, busy, onAsk }: Props) {
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col">
-      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
+      <div ref={scrollRef} className="mx-auto w-full max-w-3xl flex-1 space-y-5 overflow-y-auto px-6 py-8">
         {turns.length === 0 ? (
           <div
             data-testid="chat-empty"
-            className="mx-auto mt-16 max-w-md text-center text-sm text-gray-400"
+            className="mx-auto mt-20 max-w-md text-center text-sm text-slate-400"
           >
-            <div className="text-2xl">💬</div>
-            <p className="mt-2">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-50 text-2xl">
+              💬
+            </div>
+            <p className="mt-3 leading-relaxed">
               Ask your first question about{' '}
-              <span className="font-medium text-gray-600">{datasetName}</span> —
+              <span className="font-medium text-slate-600">{datasetName}</span> —
               e.g. &ldquo;what is total revenue by region?&rdquo;
             </p>
           </div>
@@ -48,12 +50,12 @@ export function ChatPane({ datasetName, turns, busy, onAsk }: Props) {
 
       <form
         onSubmit={submit}
-        className="border-t border-gray-200 bg-white px-4 py-3"
+        className="border-t border-slate-200 bg-white px-4 py-4"
       >
         <div className="mx-auto flex max-w-3xl items-end gap-2">
           <input
             data-testid="question-input"
-            className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-gray-50"
+            className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm shadow-sm transition placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/30 disabled:bg-slate-50"
             placeholder={
               busy
                 ? 'Working on your question…'
@@ -67,12 +69,12 @@ export function ChatPane({ datasetName, turns, busy, onAsk }: Props) {
             type="submit"
             data-testid="ask-button"
             disabled={busy || !value.trim()}
-            className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-xl bg-accent-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-accent-700 disabled:opacity-50 disabled:shadow-none"
           >
             {busy ? 'Asking…' : 'Ask'}
           </button>
         </div>
-        <p className="mx-auto mt-1.5 max-w-3xl text-[11px] text-gray-400">
+        <p className="mx-auto mt-2 max-w-3xl text-[11px] text-slate-400">
           One question at a time · analysis runs locally · only profile + a small
           sample go to the model
         </p>

@@ -29,7 +29,7 @@ export function ChatMessage({ turn }: { turn: ChatTurn }) {
   if (turn.role === 'user') {
     return (
       <div className="flex justify-end" data-testid="user-message">
-        <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-indigo-600 px-4 py-2 text-sm text-white">
+        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-accent-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm">
           {turn.question}
         </div>
       </div>
@@ -40,26 +40,26 @@ export function ChatMessage({ turn }: { turn: ChatTurn }) {
 
   return (
     <div className="flex justify-start" data-testid="assistant-message">
-      <div className="w-full max-w-[92%] rounded-2xl rounded-bl-sm border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm">
+      <div className="w-full max-w-[92%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3.5 text-sm shadow-sm ring-1 ring-slate-900/[0.02]">
         {/* Live steps + timer while running */}
         {streaming && (
-          <div data-testid="live-status" className="space-y-1.5">
-            <div className="flex items-center gap-2 text-indigo-600">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
+          <div data-testid="live-status" className="space-y-2">
+            <div className="flex items-center gap-2 text-accent-600">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-accent-500" />
               <span data-testid="current-step" className="font-medium">
                 {turn.currentStep ?? 'Working…'}
               </span>
               <span
                 data-testid="elapsed-timer"
-                className="ml-auto font-mono text-xs text-gray-400"
+                className="ml-auto font-mono text-xs tabular-nums text-slate-400"
               >
                 {fmtElapsed(turn.elapsedMs ?? 0)}
               </span>
             </div>
-            <ol className="ml-4 space-y-0.5 text-xs text-gray-400">
+            <ol className="ml-1 space-y-1 text-xs text-slate-400">
               {turn.steps.map((s, i) => (
-                <li key={i} className="flex items-center gap-1">
-                  <span className="text-green-500">✓</span> {s}
+                <li key={i} className="flex items-center gap-1.5">
+                  <span className="text-emerald-500">✓</span> {s}
                 </li>
               ))}
             </ol>
@@ -77,10 +77,10 @@ export function ChatMessage({ turn }: { turn: ChatTurn }) {
         {/* Clarifying question */}
         {turn.status === 'clarify' && turn.answer && (
           <div data-testid="clarify-message">
-            <div className="mb-1 inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-700">
+            <div className="mb-1.5 inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
               Needs clarification
             </div>
-            <p className="whitespace-pre-wrap text-gray-800">
+            <p className="whitespace-pre-wrap leading-relaxed text-slate-700">
               {turn.answer.content}
             </p>
           </div>
@@ -90,11 +90,11 @@ export function ChatMessage({ turn }: { turn: ChatTurn }) {
         {turn.status === 'done' && turn.answer && (
           <div data-testid="answer-content">
             {turn.answer.confidence && turn.answer.confidence !== 'high' && (
-              <div className="mb-2 inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-700">
+              <div className="mb-2 inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
                 flagged — verify
               </div>
             )}
-            <p className="whitespace-pre-wrap leading-relaxed text-gray-800">
+            <p className="whitespace-pre-wrap leading-relaxed text-slate-700">
               {turn.answer.content}
             </p>
             {turn.answer.chart && <AnswerChart spec={turn.answer.chart} />}
@@ -103,13 +103,13 @@ export function ChatMessage({ turn }: { turn: ChatTurn }) {
             {/* Answer toolbar — Phase-1 stubs */}
             <div
               data-testid="answer-toolbar"
-              className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2 text-xs text-gray-400"
+              className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-400"
             >
               <button
                 type="button"
                 disabled
                 data-testid="show-code-stub"
-                className="cursor-not-allowed rounded border border-gray-200 px-2 py-1 opacity-60"
+                className="inline-flex cursor-not-allowed items-center rounded-md border border-slate-200 px-2.5 py-1 opacity-70"
                 title="Coming soon — reveal the analysis code"
               >
                 {'</> Show code'}
@@ -119,7 +119,7 @@ export function ChatMessage({ turn }: { turn: ChatTurn }) {
                 type="button"
                 disabled
                 data-testid="export-stub"
-                className="cursor-not-allowed rounded border border-gray-200 px-2 py-1 opacity-60"
+                className="inline-flex cursor-not-allowed items-center rounded-md border border-slate-200 px-2.5 py-1 opacity-70"
                 title="Coming soon — export result as CSV/PNG"
               >
                 ⬇ Export
@@ -130,14 +130,14 @@ export function ChatMessage({ turn }: { turn: ChatTurn }) {
             {/* Follow-up suggestion chips — stub */}
             <div
               data-testid="followup-stub"
-              className="mt-2 flex flex-wrap items-center gap-2 opacity-60"
+              className="mt-2.5 flex flex-wrap items-center gap-2 opacity-70"
             >
-              <span className="text-[11px] text-gray-400">Suggested follow-ups</span>
+              <span className="text-[11px] text-slate-400">Suggested follow-ups</span>
               <ComingSoonBadge label="P3" />
-              <span className="cursor-not-allowed rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] text-gray-400">
+              <span className="cursor-not-allowed rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-[11px] text-slate-400">
                 Break that down by month
               </span>
-              <span className="cursor-not-allowed rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] text-gray-400">
+              <span className="cursor-not-allowed rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-[11px] text-slate-400">
                 Show the top 5
               </span>
             </div>
@@ -148,7 +148,7 @@ export function ChatMessage({ turn }: { turn: ChatTurn }) {
         {turn.usage && (
           <div
             data-testid="usage-line"
-            className="mt-2 border-t border-gray-100 pt-2 font-mono text-[11px] text-gray-400"
+            className="mt-3 border-t border-slate-100 pt-2.5 font-mono text-[11px] tabular-nums text-slate-400"
           >
             {turn.usage.total.toLocaleString()} tokens ({turn.usage.prompt}▸
             {turn.usage.completion}) · $

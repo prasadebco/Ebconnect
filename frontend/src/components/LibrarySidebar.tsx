@@ -10,23 +10,23 @@ export function LibrarySidebar({ current }: { current: Dataset | null }) {
   return (
     <aside
       data-testid="library-sidebar"
-      className="hidden w-60 shrink-0 flex-col border-r border-gray-200 bg-white/60 p-4 md:flex"
+      className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:flex"
     >
-      <div className="flex items-center text-xs font-semibold uppercase tracking-wide text-gray-500">
+      <div className="flex items-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">
         Library
         <ComingSoonBadge label="P2" />
       </div>
 
       <div className="mt-3 space-y-1">
         {current ? (
-          <div className="rounded-md bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-800">
+          <div className="rounded-lg bg-accent-50 px-3 py-2.5 text-sm font-medium text-accent-800 ring-1 ring-inset ring-accent-600/10">
             {current.name}
-            <div className="text-[11px] font-normal text-indigo-500">
+            <div className="mt-0.5 text-[11px] font-normal text-accent-500">
               {current.row_count.toLocaleString()} rows
             </div>
           </div>
         ) : (
-          <p className="px-1 text-xs text-gray-400">
+          <p className="px-1 text-xs leading-relaxed text-slate-400">
             Uploaded datasets will collect here across sessions.
           </p>
         )}
@@ -37,15 +37,15 @@ export function LibrarySidebar({ current }: { current: Dataset | null }) {
         className="mt-4 space-y-2 opacity-50"
         title="Coming soon — a persistent library across days"
       >
-        <div className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-400">
+        <div className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-400">
           Yesterday · sales_q1.csv
         </div>
-        <div className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-400">
+        <div className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-400">
           Conversations history
         </div>
       </div>
 
-      <div className="mt-auto pt-4 text-[11px] text-gray-400">
+      <div className="mt-auto pt-4 text-[11px] leading-relaxed text-slate-400">
         Your data never leaves this server.
       </div>
     </aside>

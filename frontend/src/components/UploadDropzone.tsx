@@ -20,10 +20,10 @@ export function UploadDropzone({ onFile, loading, error }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-2xl px-6 py-10">
-      <h2 className="mb-1 text-2xl font-semibold tracking-tight text-gray-900">
+      <h2 className="mb-2 text-[28px] font-semibold leading-tight tracking-tight text-slate-900">
         Ask your spreadsheet a question
       </h2>
-      <p className="mb-6 text-sm text-gray-500">
+      <p className="mb-7 text-sm leading-relaxed text-slate-500">
         Upload a CSV. It is profiled and analyzed locally — only the profile and
         a small sample ever leave your server.
       </p>
@@ -48,10 +48,10 @@ export function UploadDropzone({ onFile, loading, error }: Props) {
           setDragActive(false)
           if (!loading) pick(e.dataTransfer.files?.[0])
         }}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-14 text-center transition ${
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-16 text-center transition ${
           dragActive
-            ? 'border-indigo-500 bg-indigo-50'
-            : 'border-gray-300 bg-white hover:border-indigo-400 hover:bg-gray-50'
+            ? 'border-accent-500 bg-accent-50'
+            : 'border-slate-300 bg-white hover:border-accent-400 hover:bg-accent-50/40'
         } ${loading ? 'pointer-events-none opacity-60' : ''}`}
       >
         <input
@@ -64,21 +64,23 @@ export function UploadDropzone({ onFile, loading, error }: Props) {
         />
         {loading ? (
           <div data-testid="upload-loading" className="flex flex-col items-center">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-            <p className="mt-3 text-sm text-gray-600">Profiling your file…</p>
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
+            <p className="mt-3 text-sm text-slate-600">Profiling your file…</p>
           </div>
         ) : (
           <>
-            <div className="text-3xl">📄</div>
-            <p className="mt-3 text-sm font-medium text-gray-700">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-50 text-3xl">
+              📄
+            </div>
+            <p className="mt-4 text-sm font-medium text-slate-700">
               Drop a CSV here, or click to browse
             </p>
-            <p className="mt-1 text-xs text-gray-400">CSV up to ~100MB</p>
+            <p className="mt-1 text-xs text-slate-400">CSV up to ~100MB</p>
           </>
         )}
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
+      <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
         <span className="inline-flex items-center">
           Add another file · Excel sheets
           <ComingSoonBadge label="P3" />
