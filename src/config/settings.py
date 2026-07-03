@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="")
     gemini_api_key: str = Field(default="")
 
+    # Analysis loop tuning
+    uploads_dir: str = Field(default="data/uploads")
+    sample_rows: int = Field(default=20)      # rows sampled to the LLM (never full data)
+    max_attempts: int = Field(default=3)      # iterate/self-correct cap
+    exec_timeout_s: int = Field(default=25)   # sandbox wall-clock timeout (seconds)
+    max_upload_bytes: int = Field(default=100 * 1024 * 1024)  # ~100MB guard
+
 
 _settings: Settings | None = None
 

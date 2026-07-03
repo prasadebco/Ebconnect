@@ -1,0 +1,9 @@
+region,month,revenue,units
+East,Jan,1200.50,34
+West,Jan,980.00,21
+East,Feb,1500.75,40
+West,Feb,1100.25,28
+North,Jan,750.00,15
+North,Feb,890.50,19
+South,Jan,1320.00,30
+South,Feb,1410.00,33
