@@ -15,7 +15,7 @@ test('library: seed → reload → resume → reopen history → follow-up', asy
 }) => {
   // ── Seed: upload + ask one question so persisted history exists. ──
   await page.goto('./')
-  await expect(page.getByText('Spreadsheet Analyst')).toBeVisible()
+  await expect(page.getByText('Data Analyst')).toBeVisible()
 
   await page.getByTestId('file-input').setInputFiles(FIXTURE)
   await expect(page.getByTestId('column-list')).toBeVisible({ timeout: 30_000 })

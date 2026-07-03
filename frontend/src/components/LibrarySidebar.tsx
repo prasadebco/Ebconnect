@@ -75,9 +75,9 @@ export function LibrarySidebar({
                   <div
                     data-testid="library-item"
                     data-dataset-id={d.id}
-                    className={`group relative rounded-lg ring-1 ring-inset transition ${
+                    className={`group relative overflow-hidden rounded-lg ring-1 ring-inset transition ${
                       active
-                        ? 'bg-accent-50 ring-accent-600/20'
+                        ? 'bg-accent-50 ring-accent-600/20 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-brand-500'
                         : 'bg-white ring-slate-200 hover:bg-slate-50'
                     }`}
                   >

@@ -325,12 +325,17 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col bg-slate-50">
-      <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-3.5 shadow-sm">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-600 text-sm text-white shadow-sm">
-          📊
-        </span>
+      <header className="flex items-center gap-3 border-b border-slate-200 bg-white bg-gradient-to-r from-white to-accent-50/40 px-6 py-3 shadow-sm">
+        {/* Static-export app is served under basePath '/app', so plain <img>
+            src is NOT auto-prefixed — reference the asset at /app/…. */}
+        <img
+          src="/app/ebco-logo.svg"
+          alt="EBCO PVT LTD"
+          className="h-9 w-auto shrink-0"
+        />
+        <span className="h-6 w-px shrink-0 bg-slate-200" aria-hidden="true" />
         <span className="text-[15px] font-semibold tracking-tight text-slate-900">
-          Spreadsheet Analyst
+          Ebco AI <span className="text-brand-500">—</span> Data Analyst
         </span>
         <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />

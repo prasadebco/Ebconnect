@@ -12,8 +12,8 @@ test('primary journey: upload → profile → ask → answer + chart', async ({
 }) => {
   await page.goto('./')
 
-  // Page loads and is styled (indigo header brand present).
-  await expect(page.getByText('Spreadsheet Analyst')).toBeVisible()
+  // Page loads and is styled (Ebco header brand present).
+  await expect(page.getByText('Data Analyst')).toBeVisible()
 
   // The header should actually be styled — Tailwind compiled, not raw.
   const headerBg = await page

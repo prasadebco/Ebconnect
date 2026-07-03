@@ -19,20 +19,20 @@ import {
 } from 'recharts'
 import type { ChartSpec } from '@/lib/types'
 
-// Cohesive, deliberate multi-series palette anchored on the app's indigo
-// accent (--color-accent-600 = #4f46e5 in globals.css). Uses the deeper -600
-// tier of a hand-ordered hue wheel: richer and higher-contrast on the white
-// card than the flat default Recharts colors, while every hue stays clearly
-// distinguishable (accessible) and the ordering is stable across chart types.
+// EBCO brand-led multi-series palette. Leads with Ebco Blue #003DA5 (so
+// single-series charts render in the brand primary), pairs it with Ebco
+// Orange #F47920 as the standout highlight, then alternates blue tints with
+// harmonious supporting hues (teal, muted gold, slate, rust) so every
+// adjacent series has strong contrast and stays legible on the white card.
 const COLORS = [
-  '#4f46e5', // accent-600 — indigo (brand lead)
-  '#7c3aed', // violet-600
-  '#0891b2', // cyan-600
-  '#059669', // emerald-600
-  '#d97706', // amber-600
-  '#e11d48', // rose-600
-  '#0d9488', // teal-600
-  '#c026d3', // fuchsia-600
+  '#003da5', // Ebco Blue — brand primary (single-series lead)
+  '#f47920', // Ebco Orange — standout highlight
+  '#3f74c4', // mid blue tint
+  '#0ea5a5', // teal
+  '#e0a32e', // muted gold
+  '#7ba1d9', // light blue tint
+  '#64748b', // slate-500
+  '#b34f13', // deep rust orange
 ]
 
 const AXIS_COLOR = '#94a3b8' // slate-400
@@ -51,7 +51,7 @@ const tooltipStyle = {
   },
   labelStyle: { color: '#0f172a', fontWeight: 600, marginBottom: 4 },
   itemStyle: { color: '#334155', padding: 0 },
-  cursor: { fill: 'rgba(79,70,229,0.06)' },
+  cursor: { fill: 'rgba(0,61,165,0.06)' },
 }
 
 const legendStyle = { fontSize: 12, paddingTop: 8, color: TICK_COLOR }
