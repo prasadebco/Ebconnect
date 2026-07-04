@@ -6,6 +6,8 @@
 
 A single-origin web app: a Next.js UI (static-exported, served by FastAPI at `:8001/app/`) talks to a FastAPI backend. The backend stores uploaded spreadsheets on the local filesystem, profiles them, and persists datasets + chat history in SQLite. Each user question runs through a LangGraph agent that writes pandas code with Gemini and executes it **locally, in a sandboxed subprocess, against the raw data** — only the question, the data profile, and a small capped row sample are sent to Gemini. The agent iterates (write → run → verify → self-correct / clarify) until confident, then returns a clean answer (prose + numbers + chart spec + table). Live step events, elapsed time, and Gemini token/cost stream to the UI over SSE.
 
+> **Model note:** the effective default LLM is `gemini-3.1-pro-preview` until the GA `gemini-3.1-pro` alias ships on the API; override via `AGENT_LLM_MODEL`.
+
 ## Component Map
 
 ```

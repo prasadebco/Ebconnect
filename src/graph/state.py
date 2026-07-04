@@ -22,6 +22,8 @@ class AgentState(TypedDict, total=False):
     attempts: int
     verify_notes: str | None
     confidence: str
+    failed_attempts: list      # history of prior failures [{code, error}] so write_code avoids repeating them
+    retried: bool              # True once the loop has self-corrected at least once
 
     # Output
     answer_text: str | None

@@ -5,6 +5,8 @@ import type { AnswerEvent, UsageEvent } from '@/lib/types'
 import { downloadExport } from '@/lib/api'
 import { AnswerChart } from './AnswerChart'
 import { AnswerTable } from './AnswerTable'
+import { ClarifyReply } from './ClarifyReply'
+import { LiveSteps, StepTrail } from './StepTrail'
 
 export interface ChatTurn {
   id: string
@@ -34,12 +36,16 @@ interface ChatMessageProps {
   // a callback to submit a follow-up chip as the next question.
   conversationId?: string | null
   onFollowup?: (question: string) => void
+  // Phase-4: whether this is the last turn — the inline clarify-reply box only
+  // renders on the latest clarifying question (older ones are read-only).
+  isLast?: boolean
 }
 
 export function ChatMessage({
   turn,
   conversationId,
   onFollowup,
+  isLast,
 }: ChatMessageProps) {
   const [showCode, setShowCode] = useState(false)
   const [exporting, setExporting] = useState<null | 'csv' | 'png'>(null)
@@ -77,6 +83,10 @@ export function ChatMessage({
   }
 
   const streaming = turn.status === 'streaming'
+  // Read confidence defensively: only medium/low flags; anything else
+  // (high, absent, unknown string) renders clean with no badge.
+  const conf = turn.answer?.confidence
+  const lowConfidence = conf === 'low' || conf === 'medium'
 
   return (
     <div className="flex justify-start" data-testid="assistant-message">
@@ -96,13 +106,7 @@ export function ChatMessage({
                 {fmtElapsed(turn.elapsedMs ?? 0)}
               </span>
             </div>
-            <ol className="ml-1 space-y-1 text-xs text-slate-400">
-              {turn.steps.map((s, i) => (
-                <li key={i} className="flex items-center gap-1.5">
-                  <span className="text-emerald-500">✓</span> {s}
-                </li>
-              ))}
-            </ol>
+            <LiveSteps steps={turn.steps} />
           </div>
         )}
 
@@ -114,29 +118,56 @@ export function ChatMessage({
           </div>
         )}
 
-        {/* Clarifying question */}
+        {/* Clarifying question — distinct from an error and a normal answer.
+            The user can answer inline; their reply resumes the SAME chat. */}
         {turn.status === 'clarify' && turn.answer && (
-          <div data-testid="clarify-message">
-            <div className="mb-1.5 inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-              Needs clarification
+          <div data-testid="clarify-turn">
+            <div className="mb-1.5 inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+              <span aria-hidden="true">✳</span> I need a quick clarification
             </div>
-            <p className="whitespace-pre-wrap leading-relaxed text-slate-700">
+            <p
+              data-testid="clarify-question"
+              className="whitespace-pre-wrap leading-relaxed text-slate-700"
+            >
               {turn.answer.content}
             </p>
+            {/* Inline quick-reply on the latest clarify turn only. */}
+            {isLast && onFollowup && (
+              <ClarifyReply onAnswer={onFollowup} disabled={!onFollowup} />
+            )}
+            <StepTrail steps={turn.steps} />
           </div>
         )}
 
         {/* Completed answer */}
         {turn.status === 'done' && turn.answer && (
           <div data-testid="answer-content">
-            {turn.answer.confidence && turn.answer.confidence !== 'high' && (
-              <div className="mb-2 inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                flagged — verify
+            {/* Confidence flag — clean by default (high shows nothing); a
+                subtle amber "best guess" badge for medium/low confidence.
+                Read defensively so older messages without confidence stay
+                clean. */}
+            {lowConfidence && (
+              <div
+                data-testid="confidence-badge"
+                className="mb-2 inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                title="This answer is a best guess — verify before acting."
+              >
+                <span aria-hidden="true">⚠</span> Best guess — verify
               </div>
             )}
             <p className="whitespace-pre-wrap leading-relaxed text-slate-700">
               {turn.answer.content}
             </p>
+            {lowConfidence && (
+              <p
+                data-testid="low-confidence-note"
+                className="mt-1.5 text-[11px] italic text-amber-700"
+              >
+                {turn.answer.confidence === 'low'
+                  ? 'Low confidence — the question was under-specified, so verify this against the source.'
+                  : 'Medium confidence — double-check this before acting on it.'}
+              </p>
+            )}
             {turn.answer.chart && <AnswerChart spec={turn.answer.chart} />}
             {turn.answer.table && <AnswerTable table={turn.answer.table} />}
 
@@ -236,6 +267,10 @@ export function ChatMessage({
                 ))}
               </div>
             )}
+
+            {/* Step trail — collapsed by default, auto-opens when the agent
+                retried/self-corrected so those steps stay visible. */}
+            <StepTrail steps={turn.steps} />
           </div>
         )}
 

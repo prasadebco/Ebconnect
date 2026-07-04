@@ -8,6 +8,13 @@ from fastapi.staticfiles import StaticFiles
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     from db.session import init_db
+    from config.settings import get_settings
+    from observability.events import configure_logging
+
+    try:
+        configure_logging(get_settings().log_level)
+    except Exception:  # noqa: BLE001 — logging must never block startup
+        pass
     init_db()
     yield
 

@@ -43,6 +43,7 @@ def _build_graph():
     g.add_conditional_edges("verify", route_after_verify, {
         "answer": "answer",
         "reflect": "reflect",
+        "handle_error": "handle_error",
     })
     g.add_edge("reflect", "write_code")
     g.add_edge("answer", "finalize")

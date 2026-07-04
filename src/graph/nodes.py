@@ -132,10 +132,23 @@ def write_code(state: AgentState) -> AgentState:
     try:
         notes = state.get("verify_notes")
         notes_block = f"\n\nVERIFY NOTES (previous attempt failed):\n{notes}" if notes else ""
+        failed = state.get("failed_attempts") or []
+        failed_block = ""
+        if failed:
+            lines = []
+            for i, fa in enumerate(failed, 1):
+                lines.append(
+                    f"[attempt {i}] CODE:\n{fa.get('code', '')}\n"
+                    f"FAILED WITH: {fa.get('error', '')}"
+                )
+            failed_block = (
+                "\n\nPRIOR FAILED ATTEMPTS — do NOT repeat these; take a genuinely "
+                "DIFFERENT approach:\n" + "\n---\n".join(lines)
+            )
         prompt = (
             f"{_history(state)}{_data_context(state)}\n\n"
             f"QUESTION: {state['question']}\n"
-            f"APPROACH: {state.get('approach', '')}{notes_block}"
+            f"APPROACH: {state.get('approach', '')}{notes_block}{failed_block}"
         )
         text, state = _call(state, "write_code", _system("write_code.md"), prompt)
         data = _extract_json(text)
@@ -147,32 +160,138 @@ def write_code(state: AgentState) -> AgentState:
         return {**state, "error": f"write_code failed: {exc}"}
 
 
+# Test hook: a FIFO queue of forced exec results. When non-empty, the next
+# `execute_local` pops and returns a forced result instead of running the real
+# sandbox — used to deterministically inject a first-attempt failure (or a
+# repeatedly-suspect result) so retry/confidence paths can be tested without
+# relying on the LLM to happen to produce a failure. Empty by default → real run.
+_forced_exec_results: list[dict] = []
+
+
 def execute_local(state: AgentState) -> AgentState:
-    result = execute(state.get("code", ""), state.get("frames", {}))
+    attempt = state.get("attempts", 0)
+    if _forced_exec_results:
+        result = _forced_exec_results.pop(0)
+    else:
+        result = execute(state.get("code", ""), state.get("frames", {}))
+    import hashlib
+
+    code = state.get("code", "") or ""
+    _log.info(
+        "attempt.execute",
+        run_id=state.get("run_id"),
+        attempt=attempt,
+        code_hash=hashlib.sha1(code.encode("utf-8")).hexdigest()[:12],
+        ok=bool(result.get("ok")),
+        has_error=bool(result.get("error")),
+    )
     return {**state, "exec_result": result}
 
 
-def verify(state: AgentState) -> AgentState:
-    """Mechanical checks (no LLM in P1)."""
-    res = state.get("exec_result") or {}
+def _is_nan(v) -> bool:
+    return isinstance(v, float) and v != v  # NaN != NaN
+
+
+def _suspect_result(res: dict) -> tuple[str | None, bool]:
+    """Mechanically inspect a sandbox result for logical-suspect signals.
+
+    Returns (notes, usable):
+      - notes: a human-readable reason the result looks wrong, or None if clean.
+      - usable: whether there is *some* result_json we could still answer with as
+        a flagged best-guess (True) vs nothing usable at all — crash/timeout/no
+        result (False). An unusable capped-out run is surfaced as a clean error
+        rather than a fabricated answer.
+    """
     if not res.get("ok"):
-        return {**state, "verify_notes": res.get("error") or "execution failed", "confidence": "flagged"}
+        return (res.get("error") or "execution failed"), False
     rj = res.get("result_json")
     if rj is None:
-        return {**state, "verify_notes": "no result produced (assign `result`)", "confidence": "flagged"}
-    if rj.get("kind") == "table" and len(rj.get("rows", [])) == 0:
-        return {**state, "verify_notes": "result table is empty", "confidence": "flagged"}
-    if rj.get("kind") == "scalar" and rj.get("value") is None:
-        return {**state, "verify_notes": "result is null", "confidence": "flagged"}
-    return {**state, "verify_notes": None, "confidence": "high"}
+        return "no result produced (the code must assign a variable `result`)", False
+    kind = rj.get("kind")
+    if kind == "table":
+        rows = rj.get("rows", [])
+        if len(rows) == 0:
+            # empty result / empty join — suspect, but answerable as flagged
+            return "the result table is empty (possible empty join or over-filtering)", True
+        # all-null single value column
+        cols = rj.get("columns", [])
+        value_cols = [c for c in cols if len(cols) == 1 or c not in (cols[0],)]
+        for c in (value_cols or cols):
+            vals = [r.get(c) for r in rows]
+            if vals and all(v is None or _is_nan(v) for v in vals):
+                return f"every value in column '{c}' is null/NaN", True
+        return None, True
+    if kind == "scalar":
+        v = rj.get("value")
+        if v is None:
+            return "the result is null", True
+        if _is_nan(v):
+            return "the result is NaN (aggregation over empty/invalid data)", True
+        return None, True
+    return None, True
+
+
+def verify(state: AgentState) -> AgentState:
+    """Strengthened mechanical verification (no LLM).
+
+    Catches logically-suspect results (empty/all-null/NaN/crash) BEFORE answering
+    and sets a graded confidence. On a clean pass, confidence is 'high' (or
+    'medium' if the loop had to self-correct). On an unusable capped-out failure
+    (crash/timeout/no result), a clean surfaced error is set for handle_error.
+    """
+    res = state.get("exec_result") or {}
+    notes, usable = _suspect_result(res)
+    attempts = state.get("attempts", 0)
+    max_attempts = get_settings().max_attempts
+    _log.info(
+        "attempt.verify",
+        run_id=state.get("run_id"),
+        attempt=attempts,
+        passed=notes is None,
+        usable=usable,
+        notes=notes,
+    )
+    if notes is None:
+        confidence = "medium" if state.get("retried") else "high"
+        return {**state, "verify_notes": None, "confidence": confidence}
+    # suspect result
+    if attempts >= max_attempts and not usable:
+        # exhausted with nothing to answer with — surface a clean error
+        return {
+            **state,
+            "verify_notes": notes,
+            "confidence": "low",
+            "error": f"The analysis could not produce a valid result after {attempts} attempts: {notes}",
+        }
+    return {**state, "verify_notes": notes, "confidence": "low"}
 
 
 def reflect(state: AgentState) -> AgentState:
+    """Diagnose the failed/suspect attempt and propose a CHANGED approach.
+
+    Records the failed (code, error) into `failed_attempts` so the next
+    `write_code` sees exactly what already failed and avoids repeating it, and
+    marks `retried` so a subsequent clean pass is graded 'medium' confidence.
+    """
+    res = state.get("exec_result") or {}
+    failed = list(state.get("failed_attempts") or [])
+    failed.append({
+        "code": state.get("code", ""),
+        "error": res.get("error") or res.get("traceback") or state.get("verify_notes") or "suspect result",
+    })
+    _log.info(
+        "attempt.reflect",
+        run_id=state.get("run_id"),
+        attempt=state.get("attempts", 0),
+        prior_failures=len(failed),
+    )
     try:
+        tb = res.get("traceback") or ""
         prompt = (
             f"{_data_context(state)}\n\nQUESTION: {state['question']}\n"
             f"CODE THAT RAN:\n{state.get('code', '')}\n"
-            f"ERROR / VERIFY NOTES:\n{state.get('verify_notes', '')}"
+            f"ERROR / VERIFY NOTES:\n{state.get('verify_notes', '')}\n"
+            f"TRACEBACK:\n{tb}"
         )
         text, state = _call(state, "reflect", _system("reflect.md"), prompt)
         data = _extract_json(text)
@@ -180,11 +299,13 @@ def reflect(state: AgentState) -> AgentState:
             **state,
             "approach": data.get("approach", state.get("approach", "")),
             "verify_notes": data.get("diagnosis", state.get("verify_notes")),
+            "failed_attempts": failed,
+            "retried": True,
         }
     except Exception as exc:  # noqa: BLE001
         # reflection is best-effort; keep looping with existing notes
         _log.warning("reflect.failed", error=str(exc))
-        return state
+        return {**state, "failed_attempts": failed, "retried": True}
 
 
 def _build_chart(result_json: dict | None) -> dict | None:
@@ -219,21 +340,43 @@ def _build_table(result_json: dict | None) -> dict | None:
     return None
 
 
+_UNCERTAINTY_NOTE = (
+    "\n\n_Flagged — this is a best-guess answer that could not be fully verified; "
+    "please double-check before acting on it._"
+)
+
+
 def answer(state: AgentState) -> AgentState:
     try:
         res = state.get("exec_result") or {}
         rj = res.get("result_json")
-        confidence = state.get("confidence", "high")
+        notes = state.get("verify_notes")
+        # Final confidence: an unresolved verify note (capped-out best-guess) is
+        # low; a clean pass keeps verify's grade (high, or medium if self-corrected).
+        confidence = "low" if notes else state.get("confidence", "high")
         result_desc = json.dumps(rj, ensure_ascii=False) if rj is not None else res.get("result_repr", "")
+        uncertainty = (
+            f"\n\nNOTE: the result is uncertain ({notes}). Give a clearly-flagged "
+            f"best-guess answer and a concise one-sentence caveat — do NOT pretend it is certain."
+            if notes else ""
+        )
         prompt = (
             f"{_history(state)}QUESTION: {state['question']}\n\n"
             f"COMPUTED RESULT (correct — from local pandas on full data):\n{result_desc}\n\n"
-            f"CONFIDENCE: {confidence}"
+            f"CONFIDENCE: {confidence}{uncertainty}"
         )
         text, state = _call(state, "answer", _system("answer.md"), prompt)
         data = _extract_json(text)
         content = data.get("content") or res.get("result_repr") or "Here is the result."
+        if confidence == "low" and "flag" not in content.lower() and "verify" not in content.lower():
+            content = content + _UNCERTAINTY_NOTE
         followups = data.get("followups") or []
+        _log.info(
+            "attempt.answer",
+            run_id=state.get("run_id"),
+            confidence=confidence,
+            attempts=state.get("attempts", 0),
+        )
         return {
             **state,
             "answer_text": content,

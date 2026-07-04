@@ -17,24 +17,6 @@ class Base(DeclarativeBase):
     pass
 
 
-class RunRow(Base):
-    """Legacy skeleton table — retained for backwards compatibility."""
-
-    __tablename__ = "runs"
-
-    id: Mapped[str] = mapped_column(Text, primary_key=True, default=_uuid)
-    status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")
-    input_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    output_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, default=_now
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, default=_now, onupdate=_now
-    )
-
-
 class Dataset(Base):
     __tablename__ = "datasets"
 

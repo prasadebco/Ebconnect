@@ -51,11 +51,12 @@ export function ChatPane({
             </p>
           </div>
         ) : (
-          turns.map((t) => (
+          turns.map((t, i) => (
             <div key={t.id} data-testid={t.past ? 'past-turn' : undefined}>
               <ChatMessage
                 turn={t}
                 conversationId={conversationId}
+                isLast={i === turns.length - 1}
                 onFollowup={busy ? undefined : onAsk}
               />
             </div>

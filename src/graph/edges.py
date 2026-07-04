@@ -15,8 +15,12 @@ def route_after_write_code(state: AgentState) -> str:
 
 
 def route_after_verify(state: AgentState) -> str:
-    """Pass → answer. Fail & attempts left → reflect (retry). Fail & capped → answer (flagged)."""
-    if state.get("confidence") == "high" and not state.get("verify_notes"):
+    """Pass → answer. Fail & attempts left → reflect (retry with a changed
+    approach). Fail & capped-with-usable-result → answer (flagged best-guess).
+    Fail & capped-with-nothing-usable → handle_error (clean surfaced error)."""
+    if state.get("error"):
+        return "handle_error"
+    if not state.get("verify_notes"):
         return "answer"
     max_attempts = get_settings().max_attempts
     if state.get("attempts", 0) < max_attempts:

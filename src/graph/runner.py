@@ -177,6 +177,15 @@ def run_query(
             for node, partial in chunk.items():
                 if isinstance(partial, dict):
                     accum.update(partial)
+                if node == "reflect":
+                    # Surface the self-correction on EVERY retry (not deduped) so
+                    # the user sees the loop changing approach. attempts = code
+                    # attempts so far; the retry about to run is the next one.
+                    nxt = int(accum.get("attempts", 0)) + 1
+                    label = f"Analysis failed — retrying with a new approach (attempt {nxt})…"
+                    emitted_steps.append(label)
+                    yield ("step", {"label": label})
+                    continue
                 label = _STEP_LABELS.get(node)
                 if label and label not in emitted_steps:
                     emitted_steps.append(label)

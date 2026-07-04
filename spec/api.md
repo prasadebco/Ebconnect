@@ -8,6 +8,10 @@ REST over HTTP (FastAPI) at `:8001`, single-origin with the static-exported Next
 
 ## Endpoints / Commands
 
+### `GET /health`  (Phase 1)
+
+**Purpose:** Liveness/health probe. Returns `{ "status": "ok" }` (HTTP 200) when the server is up.
+
 ### `POST /datasets`  (Phase 1)
 
 **Purpose:** Upload a spreadsheet, store it locally, auto-profile it, register it in the library.
