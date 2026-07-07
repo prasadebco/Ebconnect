@@ -49,6 +49,8 @@ def _with_retry(fn):
 _RATES: dict[str, tuple[float, float]] = {
     "gemini-3.1-pro": (1.25, 10.00),
     "gemini-3.1-pro-preview": (1.25, 10.00),
+    "gemini-2.5-flash": (0.30, 2.50),
+    "gemini-2.5-flash-lite": (0.10, 0.40),
     "gemini-1.5-pro": (1.25, 5.00),
     "claude-sonnet-4-6": (3.00, 15.00),
 }
