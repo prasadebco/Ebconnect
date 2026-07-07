@@ -15,10 +15,12 @@ function StepItem({ label }: { label: string }) {
     <li
       data-testid={retry ? 'retry-step' : 'step-item'}
       className={`flex items-start gap-1.5 ${
-        retry ? 'font-medium text-amber-600' : 'text-slate-400'
+        retry
+          ? 'font-medium text-amber-600 dark:text-amber-400'
+          : 'text-slate-400 dark:text-slate-500'
       }`}
     >
-      <span className={retry ? 'text-amber-500' : 'text-emerald-500'}>
+      <span className={retry ? 'text-amber-500 dark:text-amber-400' : 'text-emerald-500 dark:text-emerald-400'}>
         {retry ? '↻' : '✓'}
       </span>
       <span>{label}</span>
@@ -49,19 +51,19 @@ export function StepTrail({ steps }: { steps: string[] }) {
   return (
     <div
       data-testid="step-trail"
-      className="mt-3 border-t border-slate-100 pt-2.5"
+      className="mt-3 border-t border-slate-100 pt-2.5 dark:border-slate-800"
     >
       <button
         type="button"
         data-testid="steps-toggle"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 transition hover:text-slate-600"
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 transition hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
       >
         <span>{open ? '▾' : '▸'}</span>
         {open ? 'Hide steps' : `Show steps (${steps.length})`}
         {hadRetry && (
-          <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+          <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
             self-corrected
           </span>
         )}

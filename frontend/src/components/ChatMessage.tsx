@@ -75,7 +75,7 @@ export function ChatMessage({
   if (turn.role === 'user') {
     return (
       <div className="flex justify-end" data-testid="user-message">
-        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-accent-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm">
+        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-accent-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm dark:bg-accent-500">
           {turn.question}
         </div>
       </div>
@@ -90,18 +90,18 @@ export function ChatMessage({
 
   return (
     <div className="flex justify-start" data-testid="assistant-message">
-      <div className="w-full max-w-[92%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3.5 text-sm shadow-sm ring-1 ring-slate-900/[0.02]">
+      <div className="w-full max-w-[92%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3.5 text-sm shadow-card ring-1 ring-slate-900/[0.02] dark:border-slate-800 dark:bg-slate-900 dark:ring-white/[0.03]">
         {/* Live steps + timer while running */}
         {streaming && (
           <div data-testid="live-status" className="space-y-2">
-            <div className="flex items-center gap-2 text-accent-600">
+            <div className="flex items-center gap-2 text-accent-600 dark:text-accent-300">
               <span className="h-2 w-2 animate-pulse rounded-full bg-accent-500" />
               <span data-testid="current-step" className="font-medium">
                 {turn.currentStep ?? 'Working…'}
               </span>
               <span
                 data-testid="elapsed-timer"
-                className="ml-auto font-mono text-xs tabular-nums text-slate-400"
+                className="ml-auto font-mono text-xs tabular-nums text-slate-400 dark:text-slate-500"
               >
                 {fmtElapsed(turn.elapsedMs ?? 0)}
               </span>
@@ -112,7 +112,7 @@ export function ChatMessage({
 
         {/* Error bubble */}
         {turn.status === 'error' && (
-          <div data-testid="error-message" className="text-red-600">
+          <div data-testid="error-message" className="text-red-600 dark:text-red-400">
             {turn.errorMessage ??
               "Couldn't complete this — try rephrasing your question."}
           </div>
@@ -122,12 +122,12 @@ export function ChatMessage({
             The user can answer inline; their reply resumes the SAME chat. */}
         {turn.status === 'clarify' && turn.answer && (
           <div data-testid="clarify-turn">
-            <div className="mb-1.5 inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+            <div className="mb-1.5 inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
               <span aria-hidden="true">✳</span> I need a quick clarification
             </div>
             <p
               data-testid="clarify-question"
-              className="whitespace-pre-wrap leading-relaxed text-slate-700"
+              className="whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-200"
             >
               {turn.answer.content}
             </p>
@@ -149,19 +149,19 @@ export function ChatMessage({
             {lowConfidence && (
               <div
                 data-testid="confidence-badge"
-                className="mb-2 inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                className="mb-2 inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-400/15 dark:text-amber-300"
                 title="This answer is a best guess — verify before acting."
               >
                 <span aria-hidden="true">⚠</span> Best guess — verify
               </div>
             )}
-            <p className="whitespace-pre-wrap leading-relaxed text-slate-700">
+            <p className="whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-200">
               {turn.answer.content}
             </p>
             {lowConfidence && (
               <p
                 data-testid="low-confidence-note"
-                className="mt-1.5 text-[11px] italic text-amber-700"
+                className="mt-1.5 text-[11px] italic text-amber-700 dark:text-amber-300"
               >
                 {turn.answer.confidence === 'low'
                   ? 'Low confidence — the question was under-specified, so verify this against the source.'
@@ -174,7 +174,7 @@ export function ChatMessage({
             {/* Answer toolbar — Show code + Export (Phase 3, real) */}
             <div
               data-testid="answer-toolbar"
-              className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500"
+              className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400"
             >
               {turn.answer.code && (
                 <button
@@ -182,7 +182,7 @@ export function ChatMessage({
                   data-testid="show-code-toggle"
                   aria-expanded={showCode}
                   onClick={() => setShowCode((v) => !v)}
-                  className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 font-medium transition hover:bg-slate-50"
+                  className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 font-medium transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   {showCode ? '</> Hide code' : '</> Show code'}
                 </button>
@@ -201,7 +201,7 @@ export function ChatMessage({
                     ? 'Download the result table as CSV'
                     : 'No table to export'
                 }
-                className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 font-medium transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {exporting === 'csv' ? 'Exporting…' : '⬇ Export CSV'}
               </button>
@@ -219,7 +219,7 @@ export function ChatMessage({
                     ? 'Download the chart as PNG'
                     : 'No chart to export'
                 }
-                className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 font-medium transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {exporting === 'png' ? 'Exporting…' : '⬇ Export PNG'}
               </button>
@@ -228,7 +228,7 @@ export function ChatMessage({
             {exportError && (
               <div
                 data-testid="export-error"
-                className="mt-2 text-[11px] text-red-600"
+                className="mt-2 text-[11px] text-red-600 dark:text-red-400"
               >
                 {exportError}
               </div>
@@ -238,7 +238,7 @@ export function ChatMessage({
             {turn.answer.code && showCode && (
               <pre
                 data-testid="code-block"
-                className="mt-2.5 max-h-96 overflow-auto rounded-lg border border-slate-200 bg-slate-900 p-3 font-mono text-[12px] leading-relaxed text-slate-100"
+                className="mt-2.5 max-h-96 overflow-auto rounded-lg border border-slate-200 bg-slate-900 p-3 font-mono text-[12px] leading-relaxed text-slate-100 dark:border-slate-700 dark:bg-slate-950"
               >
                 <code>{turn.answer.code}</code>
               </pre>
@@ -250,7 +250,7 @@ export function ChatMessage({
                 data-testid="followup-list"
                 className="mt-3 flex flex-wrap items-center gap-2"
               >
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">
                   Suggested follow-ups
                 </span>
                 {turn.answer.followups.slice(0, 3).map((q, i) => (
@@ -260,7 +260,7 @@ export function ChatMessage({
                     data-testid="followup-chip"
                     disabled={!onFollowup}
                     onClick={() => onFollowup?.(q)}
-                    className="rounded-full border border-accent-200 bg-accent-50/60 px-2.5 py-0.5 text-[11px] font-medium text-accent-700 transition hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-full border border-accent-200 bg-accent-50/60 px-2.5 py-0.5 text-[11px] font-medium text-accent-700 transition hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-accent-400/25 dark:bg-accent-500/10 dark:text-accent-200 dark:hover:bg-accent-500/20"
                   >
                     {q}
                   </button>
@@ -278,7 +278,7 @@ export function ChatMessage({
         {turn.usage && (
           <div
             data-testid="usage-line"
-            className="mt-3 border-t border-slate-100 pt-2.5 font-mono text-[11px] tabular-nums text-slate-400"
+            className="mt-3 border-t border-slate-100 pt-2.5 font-mono text-[11px] tabular-nums text-slate-400 dark:border-slate-800 dark:text-slate-500"
           >
             {turn.usage.total.toLocaleString()} tokens ({turn.usage.prompt}▸
             {turn.usage.completion}) · $

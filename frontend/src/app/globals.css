@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @source "../";
 
+/* Class-based dark mode for a static-export Next app: a `dark` class is set on
+   <html> by a pre-hydration inline script (see layout.tsx), so `dark:` variants
+   resolve without a hydration flash. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ── Design tokens ──────────────────────────────────────────────
    EBCO PVT LTD brand palette: slate neutrals + Ebco Blue #003DA5 primary
    with an Ebco Orange #F47920 secondary highlight used sparingly.
@@ -30,10 +35,19 @@
   --color-brand-500: #f47920;
   --color-brand-600: #d9631a;
   --color-brand-700: #b34f13;
+
+  /* Elevation — soft, deliberate shadows used across cards and panes. */
+  --shadow-card: 0 1px 2px 0 rgba(15, 23, 42, 0.04),
+    0 4px 16px -6px rgba(15, 23, 42, 0.08);
+  --shadow-pop: 0 12px 32px -12px rgba(15, 23, 42, 0.22);
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
 }
 
 body {
@@ -42,6 +56,16 @@ body {
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth, tasteful theme transition on surfaces (not on transforms, so
+   micro-interactions stay crisp). */
+body,
+aside,
+header,
+main {
+  transition: background-color 0.25s ease, border-color 0.25s ease,
+    color 0.25s ease;
 }
 
 /* Refined, quiet scrollbars so the panes feel intentional. */
@@ -59,4 +83,13 @@ body {
 }
 *::-webkit-scrollbar-thumb:hover {
   background-color: #94a3b8;
+}
+.dark * {
+  scrollbar-color: #334155 transparent;
+}
+.dark *::-webkit-scrollbar-thumb {
+  background-color: #334155;
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: #475569;
 }

@@ -18,6 +18,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ChartSpec } from '@/lib/types'
+import { useIsDark } from '@/lib/theme'
 
 // EBCO brand-led multi-series palette. Leads with Ebco Blue #003DA5 (so
 // single-series charts render in the brand primary), pairs it with Ebco
@@ -35,31 +36,49 @@ const COLORS = [
   '#b34f13', // deep rust orange
 ]
 
-const AXIS_COLOR = '#94a3b8' // slate-400
-const TICK_COLOR = '#475569' // slate-600
-const GRID_COLOR = '#e2e8f0' // slate-200
-
-const tickStyle = { fontSize: 11, fill: TICK_COLOR }
-
-const tooltipStyle = {
-  contentStyle: {
-    borderRadius: 10,
-    border: '1px solid #e2e8f0',
-    boxShadow: '0 8px 24px -8px rgba(15,23,42,0.25)',
-    fontSize: 12,
-    padding: '8px 12px',
-  },
-  labelStyle: { color: '#0f172a', fontWeight: 600, marginBottom: 4 },
-  itemStyle: { color: '#334155', padding: 0 },
-  cursor: { fill: 'rgba(0,61,165,0.06)' },
+// Theme-aware chart chrome. Charts must stay legible in BOTH themes, so axis,
+// tick, grid and tooltip colours are resolved from the active theme at render.
+function chartTheme(dark: boolean) {
+  const AXIS_COLOR = dark ? '#64748b' : '#94a3b8' // slate-500 / slate-400
+  const TICK_COLOR = dark ? '#cbd5e1' : '#475569' // slate-300 / slate-600
+  const GRID_COLOR = dark ? '#334155' : '#e2e8f0' // slate-700 / slate-200
+  const PIE_STROKE = dark ? '#0f172a' : '#ffffff' // slate-900 / white
+  return {
+    AXIS_COLOR,
+    TICK_COLOR,
+    GRID_COLOR,
+    PIE_STROKE,
+    tickStyle: { fontSize: 11, fill: TICK_COLOR },
+    legendStyle: { fontSize: 12, paddingTop: 8, color: TICK_COLOR },
+    tooltipStyle: {
+      contentStyle: {
+        borderRadius: 10,
+        border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+        background: dark ? '#1e293b' : '#ffffff',
+        boxShadow: dark
+          ? '0 8px 24px -8px rgba(0,0,0,0.6)'
+          : '0 8px 24px -8px rgba(15,23,42,0.25)',
+        fontSize: 12,
+        padding: '8px 12px',
+      },
+      labelStyle: {
+        color: dark ? '#f1f5f9' : '#0f172a',
+        fontWeight: 600,
+        marginBottom: 4,
+      },
+      itemStyle: { color: dark ? '#cbd5e1' : '#334155', padding: 0 },
+      cursor: { fill: dark ? 'rgba(63,116,196,0.14)' : 'rgba(0,61,165,0.06)' },
+    },
+  }
 }
-
-const legendStyle = { fontSize: 12, paddingTop: 8, color: TICK_COLOR }
 
 // Give room for rotated x labels + a left y-axis label.
 const CARTESIAN_MARGIN = { top: 12, right: 20, bottom: 28, left: 12 }
 
 export function AnswerChart({ spec }: { spec: ChartSpec }) {
+  const dark = useIsDark()
+  const { AXIS_COLOR, TICK_COLOR, GRID_COLOR, PIE_STROKE, tickStyle, legendStyle, tooltipStyle } =
+    chartTheme(dark)
   const data = spec.data ?? []
   if (data.length === 0) return null
 
@@ -78,10 +97,10 @@ export function AnswerChart({ spec }: { spec: ChartSpec }) {
   return (
     <div
       data-testid="answer-chart"
-      className="mt-4 rounded-xl border border-slate-200 bg-white p-4"
+      className="mt-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
     >
       {spec.title && (
-        <div className="mb-3 text-[13px] font-semibold tracking-tight text-slate-800">
+        <div className="mb-3 text-[13px] font-semibold tracking-tight text-slate-800 dark:text-slate-100">
           {spec.title}
         </div>
       )}
@@ -140,7 +159,7 @@ export function AnswerChart({ spec }: { spec: ChartSpec }) {
                 outerRadius={100}
                 innerRadius={48}
                 paddingAngle={2}
-                stroke="#ffffff"
+                stroke={PIE_STROKE}
                 strokeWidth={2}
                 label={{ fontSize: 11, fill: TICK_COLOR }}
               >

@@ -31,7 +31,7 @@ export function ConversationList({
     return (
       <p
         data-testid="conversation-empty"
-        className="px-1 py-1 text-[11px] leading-relaxed text-slate-400"
+        className="px-1 py-1 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500"
       >
         No past chats yet — ask a question to start one.
       </p>
@@ -52,16 +52,16 @@ export function ConversationList({
               onClick={() => onSelect(c.id)}
               className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12px] transition ${
                 active
-                  ? 'bg-accent-100 text-accent-800 ring-1 ring-inset ring-accent-600/20'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-accent-100 text-accent-800 ring-1 ring-inset ring-accent-600/20 dark:bg-accent-500/15 dark:text-accent-200 dark:ring-accent-400/25'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
-              <span className="shrink-0 text-slate-400">💬</span>
+              <span className="shrink-0 text-slate-400 dark:text-slate-500">💬</span>
               <span className="min-w-0 flex-1 truncate">
                 {c.title?.trim() || 'Untitled chat'}
               </span>
               {when && (
-                <span className="shrink-0 text-[10px] text-slate-400">
+                <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">
                   {when}
                 </span>
               )}

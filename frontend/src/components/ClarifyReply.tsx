@@ -31,7 +31,7 @@ export function ClarifyReply({ onAnswer, disabled }: Props) {
     >
       <input
         data-testid="clarify-input"
-        className="flex-1 rounded-lg border border-amber-300 bg-amber-50/40 px-3 py-2 text-sm shadow-sm transition placeholder:text-amber-700/50 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-400/30 disabled:bg-slate-50"
+        className="flex-1 rounded-lg border border-amber-300 bg-amber-50/40 px-3 py-2 text-sm text-slate-900 shadow-sm transition placeholder:text-amber-700/50 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-400/30 disabled:bg-slate-50 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-50 dark:placeholder:text-amber-200/40 dark:disabled:bg-slate-800/60"
         placeholder="Answer to continue…"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -42,7 +42,7 @@ export function ClarifyReply({ onAnswer, disabled }: Props) {
         type="submit"
         data-testid="clarify-send"
         disabled={disabled || !value.trim()}
-        className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-50 disabled:shadow-none"
+        className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-50 disabled:shadow-none dark:bg-amber-500 dark:hover:bg-amber-400"
       >
         Send
       </button>

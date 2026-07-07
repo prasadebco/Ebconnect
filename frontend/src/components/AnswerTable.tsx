@@ -27,15 +27,15 @@ export function AnswerTable({ table }: { table: TableSpec }) {
   return (
     <div
       data-testid="answer-table"
-      className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white"
+      className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
     >
       <table className="min-w-full border-collapse text-[13px]">
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50">
+          <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60">
             {table.columns.map((c) => (
               <th
                 key={c}
-                className={`whitespace-nowrap px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 ${
+                className={`whitespace-nowrap px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 ${
                   numericCols.has(c) ? 'text-right' : 'text-left'
                 }`}
               >
@@ -48,8 +48,10 @@ export function AnswerTable({ table }: { table: TableSpec }) {
           {rows.map((row, i) => (
             <tr
               key={i}
-              className={`border-b border-slate-100 transition-colors last:border-0 hover:bg-accent-50/50 ${
-                i % 2 ? 'bg-slate-50/60' : 'bg-white'
+              className={`border-b border-slate-100 transition-colors last:border-0 hover:bg-accent-50/50 dark:border-slate-800 dark:hover:bg-accent-500/10 ${
+                i % 2
+                  ? 'bg-slate-50/60 dark:bg-slate-800/40'
+                  : 'bg-white dark:bg-slate-900'
               }`}
             >
               {table.columns.map((c) => {
@@ -58,7 +60,7 @@ export function AnswerTable({ table }: { table: TableSpec }) {
                 return (
                   <td
                     key={c}
-                    className={`whitespace-nowrap px-4 py-2 text-slate-700 ${
+                    className={`whitespace-nowrap px-4 py-2 text-slate-700 dark:text-slate-300 ${
                       num ? 'text-right font-mono tabular-nums' : 'text-left'
                     }`}
                   >
@@ -73,7 +75,7 @@ export function AnswerTable({ table }: { table: TableSpec }) {
         </tbody>
       </table>
       {table.rows.length > rows.length && (
-        <div className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
+        <div className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400 dark:border-slate-800 dark:text-slate-500">
           Showing first {rows.length} of {table.rows.length.toLocaleString()} rows
         </div>
       )}

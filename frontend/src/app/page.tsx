@@ -28,6 +28,7 @@ import type { ChatTurn } from '@/components/ChatMessage'
 import { LibrarySidebar } from '@/components/LibrarySidebar'
 import { ProfilePanel } from '@/components/ProfilePanel'
 import { UploadDropzone } from '@/components/UploadDropzone'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -437,23 +438,29 @@ export default function Home() {
     : []
 
   return (
-    <div className="flex h-screen flex-col bg-slate-50">
-      <header className="flex items-center gap-3 border-b border-slate-200 bg-white bg-gradient-to-r from-white to-accent-50/40 px-6 py-3 shadow-sm">
+    <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-950">
+      <header className="z-10 flex items-center gap-3 border-b border-slate-200 bg-white bg-gradient-to-r from-white to-accent-50/40 px-6 py-3 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-900">
         {/* Static-export app is served under basePath '/app', so plain <img>
             src is NOT auto-prefixed — reference the asset at /app/…. */}
         <img
           src="/app/ebco-logo.png"
           alt="Ebco Pvt Ltd — Simplifying lives."
-          className="h-11 w-auto shrink-0"
+          className="h-11 w-auto shrink-0 dark:brightness-0 dark:invert"
         />
-        <span className="h-6 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-        <span className="text-[15px] font-semibold tracking-tight text-slate-900">
+        <span
+          className="h-6 w-px shrink-0 bg-slate-200 dark:bg-slate-700"
+          aria-hidden="true"
+        />
+        <span className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           Ebco AI <span className="text-brand-500">—</span> Data Analyst
         </span>
-        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           Local &amp; private
         </span>
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
