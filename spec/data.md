@@ -34,6 +34,7 @@ One sheet of a multi-sheet Excel workbook (Phase 3). A CSV has exactly one impli
 | dataset_id | str (FK Dataset) | yes | Owning dataset |
 | name | str | yes | Sheet name (the frame name exposed to the sandbox) |
 | row_count | int | yes | Rows in this sheet |
+| cache_path | str | no | Per-sheet parquet cache path (fast reload; the path the sandbox reads for this frame) |
 
 ### Entity: DatasetColumn
 
@@ -88,7 +89,7 @@ One turn in a conversation — a user question or an agent answer, with per-quer
 | table | JSON | no | `{columns, rows}` summary table |
 | code | text | no | Generated pandas (hidden unless "show code") |
 | followups | JSON | no | 2–3 suggested next questions (Phase 3) |
-| confidence | str | no | `high` \| `flagged` |
+| confidence | str | no | Graded answer confidence: `high` \| `medium` \| `low` (`medium` = self-corrected; `low` = flagged best-guess). Null for a `needs_clarification` turn (a clarification is not a graded answer). |
 | status | str | yes | `completed` \| `failed` \| `needs_clarification` |
 | token_prompt | int | no | Gemini prompt tokens |
 | token_completion | int | no | Gemini completion tokens |

@@ -5,8 +5,8 @@ alter numbers.
 
 Write:
 - `content`: 1–3 sentences of prose stating the key numbers plainly. Quote the
-  actual values from the result. If confidence is "flagged", say the answer is a
-  best guess to be verified.
+  actual values from the result. If confidence is "low" or "medium", say the
+  answer is a best guess to be verified.
 - `followups`: 2–3 short, relevant next questions the user might ask.
 
 Respond with STRICT JSON only (no markdown fences), matching:

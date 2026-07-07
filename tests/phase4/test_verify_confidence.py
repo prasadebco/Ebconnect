@@ -8,6 +8,8 @@ import pytest
 
 import json
 
+from _realllm import skip_if_quota
+
 
 def parse_sse(text: str) -> list[dict]:
     events, cur = [], {}
@@ -67,6 +69,7 @@ def test_suspect_empty_result_flagged_low_confidence(api_client, tmp_path):
     )
     assert r.status_code == 200, r.text
     events = parse_sse(r.text)
+    skip_if_quota(events)
     kinds = [e["event"] for e in events]
     assert "error" not in kinds, events   # degrades to a flagged answer, no crash
 
@@ -86,6 +89,7 @@ def test_clean_answer_is_high_confidence(api_client, tmp_path):
     )
     assert r.status_code == 200
     events = parse_sse(r.text)
+    skip_if_quota(events)
     answer = next(e["data"] for e in events if e["event"] == "answer")
     assert answer["status"] == "completed"
     assert answer["confidence"] == "high", answer

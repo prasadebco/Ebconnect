@@ -28,7 +28,7 @@ Answers a plain-English question over a chosen dataset by iteratively writing an
 ## Business Rules
 - Only question + profile + capped row sample go to Gemini — never the full dataset (test-asserted).
 - Bounded retries (`AGENT_MAX_ATTEMPTS`, default 3); each retry tries a different approach.
-- Ambiguous question → ask a clarifying question first; otherwise best-guess with a `flagged` badge.
+- Ambiguous question → ask a clarifying question first; otherwise a best-guess answer graded on the `high` | `medium` | `low` confidence scale, with a "flagged — verify" badge shown for `medium`/`low`.
 - Results are verified (shape/null/sanity) before being shown.
 - Follow-up questions resolve against prior turns (conversation memory).
 - Sandbox has a wall-clock timeout (`AGENT_EXEC_TIMEOUT_S`, default 25s); total answer < 30s on the tested path.

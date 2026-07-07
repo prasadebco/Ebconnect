@@ -21,7 +21,8 @@ class AgentState(TypedDict, total=False):
     exec_result: dict | None
     attempts: int
     verify_notes: str | None
-    confidence: str
+    confidence: str        # graded answer confidence: high | medium | low
+                           # (a needs_clarification turn carries no grade → None)
     failed_attempts: list      # history of prior failures [{code, error}] so write_code avoids repeating them
     retried: bool              # True once the loop has self-corrected at least once
 

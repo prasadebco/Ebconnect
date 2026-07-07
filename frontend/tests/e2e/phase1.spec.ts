@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
+import { QUOTA_SKIP_REASON, isQuotaExhausted } from './_quota'
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'sales.csv')
 
@@ -49,10 +50,16 @@ test('primary journey: upload → profile → ask → answer + chart', async ({
   await expect(page.getByTestId('live-status')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByTestId('elapsed-timer')).toBeVisible()
 
+  // The run resolves into a real answer OR the friendly quota bubble — never a
+  // hung spinner. Under free-tier quota exhaustion the answer-dependent
+  // assertions below are correctly skipped (mirroring the pytest suite).
+  const answer = page.getByTestId('answer-content')
+  const error = page.getByTestId('error-message').last()
+  await expect(answer.or(error)).toBeVisible({ timeout: 60_000 })
+  test.skip(await isQuotaExhausted(page), QUOTA_SKIP_REASON)
+
   // Final answer renders (real output, not just a 200).
-  await expect(page.getByTestId('answer-content')).toBeVisible({
-    timeout: 60_000,
-  })
+  await expect(answer).toBeVisible({ timeout: 60_000 })
 
   // Per-query token + cost line is shown.
   await expect(page.getByTestId('usage-line')).toBeVisible()

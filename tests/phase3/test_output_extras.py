@@ -4,6 +4,8 @@ Real Gemini (.env) + real SQLite.
 import pandas as pd
 import pytest
 
+from _realllm import skip_if_quota
+
 
 def _build_csv(path, rows=90):
     regions = ["East", "West", "North", "South"]
@@ -30,6 +32,7 @@ def _answered(api_client, tmp_path, parse_sse, answer_event):
     )
     assert r.status_code == 200, r.text
     events = parse_sse(r.text)
+    skip_if_quota(events)
     ans = answer_event(events)
     assert ans["status"] == "completed"
     return conv["id"], ans

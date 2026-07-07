@@ -31,7 +31,9 @@ export function UploadDropzone({ onFile, loading, error }: Props) {
         data-testid="dropzone"
         role="button"
         tabIndex={0}
+        aria-label="Upload a CSV or Excel file — drop a file here or activate to browse"
         aria-disabled={loading}
+        aria-busy={loading}
         onClick={() => !loading && inputRef.current?.click()}
         onKeyDown={(e) => {
           if ((e.key === 'Enter' || e.key === ' ') && !loading)
@@ -91,8 +93,12 @@ export function UploadDropzone({ onFile, loading, error }: Props) {
       {error && (
         <div
           data-testid="upload-error"
-          className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+          role="alert"
+          className="mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
         >
+          <span aria-hidden="true" className="mt-px shrink-0">
+            ⚠
+          </span>
           {error}
         </div>
       )}

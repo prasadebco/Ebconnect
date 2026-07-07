@@ -8,6 +8,8 @@ import pytest
 
 import json
 
+from _realllm import skip_if_quota
+
 
 def parse_sse(text: str) -> list[dict]:
     events, cur = [], {}
@@ -47,7 +49,9 @@ def _setup(api_client, tmp_path):
 def _query(api_client, conv_id, question):
     r = api_client.post(f"/conversations/{conv_id}/query", json={"question": question})
     assert r.status_code == 200, r.text
-    return parse_sse(r.text)
+    events = parse_sse(r.text)
+    skip_if_quota(events)
+    return events
 
 
 @pytest.mark.usefixtures("_require_llm_key")

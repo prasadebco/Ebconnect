@@ -20,6 +20,7 @@ from db.models import (
 )
 from graph.agent import agentic_ai
 from graph.state import AgentState
+from llm.client import friendly_error
 from observability.events import get_logger
 
 _log = get_logger("runner")
@@ -202,6 +203,11 @@ def run_query(
     cost = accum.get("cost_usd", 0.0)
     status = accum.get("status", "completed")
 
+    # Surface any failure as a clean, user-facing message — never a raw traceback
+    # or provider stack string. A Gemini quota/429/RESOURCE_EXHAUSTED becomes a
+    # friendly rate-limit message; the raw error stays in structured logs only.
+    friendly = friendly_error(accum.get("error")) if status == "failed" else None
+
     _log.info(
         "run.complete",
         conversation_id=conversation_id,
@@ -218,7 +224,7 @@ def run_query(
         msg = Message(
             conversation_id=conversation_id,
             role="assistant",
-            content=accum.get("answer_text") or "",
+            content=(friendly if status == "failed" else accum.get("answer_text")) or "",
             chart=accum.get("chart"),
             table=accum.get("table"),
             code=accum.get("code"),
@@ -231,14 +237,14 @@ def run_query(
             cost_usd=cost,
             steps=emitted_steps,
             elapsed_ms=elapsed_ms,
-            error_message=accum.get("error") if status == "failed" else None,
+            error_message=friendly if status == "failed" else None,
         )
         session.add(msg)
         session.flush()
         message_id = msg.id
 
     if status == "failed":
-        yield ("error", {"message": accum.get("error") or "the analysis failed"})
+        yield ("error", {"message": friendly or "The analysis failed. Please try again."})
         return
 
     yield ("usage", {

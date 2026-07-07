@@ -93,3 +93,31 @@ main {
 .dark *::-webkit-scrollbar-thumb:hover {
   background-color: #475569;
 }
+
+/* Accessibility: a consistent, theme-aware keyboard focus ring on any
+   interactive element that doesn't already declare its own focus-visible
+   styling. Mouse clicks (no :focus-visible) stay ring-free. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Respect the user's reduced-motion preference: kill spinners, pulses and
+   transitions so the UI stays calm and legible without motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

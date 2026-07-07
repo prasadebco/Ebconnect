@@ -7,6 +7,8 @@ verify the answer against a ground-truth pandas computation on that sheet.
 import pandas as pd
 import pytest
 
+from _realllm import skip_if_quota
+
 
 def _build_workbook(path):
     regions = ["East", "West", "North", "South"]
@@ -68,6 +70,7 @@ def test_query_against_chosen_sheet(api_client, tmp_path, parse_sse, answer_even
     )
     assert r.status_code == 200, r.text
     events = parse_sse(r.text)
+    skip_if_quota(events)
     assert "error" not in [e["event"] for e in events]
     ans = answer_event(events)
     assert ans["status"] == "completed"

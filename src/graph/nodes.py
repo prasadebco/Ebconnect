@@ -391,11 +391,14 @@ def answer(state: AgentState) -> AgentState:
 
 def ask_clarification(state: AgentState) -> AgentState:
     q = state.get("clarifying_question") or "Could you clarify your question?"
+    # A clarification is a distinct branch keyed off status="needs_clarification";
+    # it is NOT a graded answer, so it carries no confidence grade (the graded
+    # answer scale is high | medium | low — see verify/answer).
     return {
         **state,
         "answer_text": q,
         "status": "needs_clarification",
-        "confidence": "flagged",
+        "confidence": None,
     }
 
 

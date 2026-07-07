@@ -8,6 +8,8 @@ import json
 import pandas as pd
 import pytest
 
+from _realllm import skip_if_quota
+
 
 def _build_csv(path, rows=120):
     regions = ["East", "West", "North", "South"]
@@ -68,6 +70,7 @@ def test_full_pipeline_query(api_client, tmp_path):
     )
     assert r.status_code == 200, r.text
     events = _parse_sse(r.text)
+    skip_if_quota(events)
     kinds = [e["event"] for e in events]
 
     # live steps streamed
@@ -117,6 +120,7 @@ def test_query_persists_messages(api_client, tmp_path, _isolated_db):
 
     r = api_client.post(f"/conversations/{conv['id']}/query", json={"question": "how many rows are there?"})
     assert r.status_code == 200
+    skip_if_quota(_parse_sse(r.text))
 
     with Session(_isolated_db) as s:
         msgs = s.query(Message).filter(Message.conversation_id == conv["id"]).all()

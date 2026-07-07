@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { AnswerEvent, UsageEvent } from '@/lib/types'
 import { downloadExport } from '@/lib/api'
+import { humanizeError } from '@/lib/errors'
 import { AnswerChart } from './AnswerChart'
 import { AnswerTable } from './AnswerTable'
 import { ClarifyReply } from './ClarifyReply'
@@ -65,7 +66,9 @@ export function ChatMessage({
       )
     } catch (e) {
       setExportError(
-        e instanceof Error ? e.message : `Couldn't export ${format}.`,
+        e instanceof Error
+          ? humanizeError(e.message)
+          : `Couldn't export ${format}.`,
       )
     } finally {
       setExporting(null)
@@ -110,11 +113,29 @@ export function ChatMessage({
           </div>
         )}
 
-        {/* Error bubble */}
+        {/* Error bubble — a clean, friendly affordance (never a raw stack or a
+            hung spinner). Offers a one-click retry of the same question. */}
         {turn.status === 'error' && (
-          <div data-testid="error-message" className="text-red-600 dark:text-red-400">
-            {turn.errorMessage ??
-              "Couldn't complete this — try rephrasing your question."}
+          <div data-testid="error-message" role="alert" className="space-y-2">
+            <div className="flex items-start gap-2 text-red-600 dark:text-red-400">
+              <span aria-hidden="true" className="mt-px shrink-0">
+                ⚠
+              </span>
+              <span>
+                {turn.errorMessage ??
+                  "Couldn't complete this — try rephrasing your question."}
+              </span>
+            </div>
+            {turn.question && onFollowup && (
+              <button
+                type="button"
+                data-testid="retry-question"
+                onClick={() => onFollowup(turn.question as string)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                ↻ Try again
+              </button>
+            )}
           </div>
         )}
 
@@ -228,6 +249,7 @@ export function ChatMessage({
             {exportError && (
               <div
                 data-testid="export-error"
+                role="alert"
                 className="mt-2 text-[11px] text-red-600 dark:text-red-400"
               >
                 {exportError}

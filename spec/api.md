@@ -10,7 +10,13 @@ REST over HTTP (FastAPI) at `:8001`, single-origin with the static-exported Next
 
 ### `GET /health`  (Phase 1)
 
-**Purpose:** Liveness/health probe. Returns `{ "status": "ok" }` (HTTP 200) when the server is up.
+**Purpose:** Liveness/health probe (HTTP 200 when the server is up).
+
+**Response (actual):** `/health` is wrapped in the shared app envelope:
+```json
+{ "data": { "status": "ok" }, "error": null }
+```
+> **Envelope note (intentional):** `/health` is the one endpoint that returns the `{data, error}` app envelope; the resource endpoints below (`/datasets`, `/conversations`, …) return **bare** objects/arrays (no envelope). This is deliberate — `/health` is an infra/liveness probe that reports through the generic envelope, while the product endpoints return their resources directly for the UI. Clients read `data.status` for `/health`.
 
 ### `POST /datasets`  (Phase 1)
 
@@ -96,7 +102,7 @@ event: usage   data: {"prompt": 812, "completion": 190, "total": 1002, "cost_usd
 event: answer  data: {"message_id":"uuid","content":"...","chart":{...}|null,"table":{...}|null,
                       "code":"...","followups":[...],"confidence":"high","status":"completed"}
 ```
-A `needs_clarification` run ends with an `answer` event whose `status="needs_clarification"` and `content` is the clarifying question. A failure ends with `event: error  data: {"message": "..."}` and a persisted `status="failed"` message.
+`confidence` is the graded scale **`high` | `medium` | `low`** (`medium` = the loop self-corrected; `low` = a flagged best-guess). A `needs_clarification` run ends with an `answer` event whose `status="needs_clarification"` and `content` is the clarifying question — it carries **no** confidence grade (the field defaults to `"high"` on the wire only because it is not a graded answer; the persisted message stores `null`). A failure ends with `event: error  data: {"message": "..."}` — a **friendly** message (a Gemini quota/429 becomes "The AI service is temporarily rate-limited or out of quota — please try again shortly."; raw tracebacks never appear) — and a persisted `status="failed"` message.
 
 **Error cases:**
 | Status | Condition |

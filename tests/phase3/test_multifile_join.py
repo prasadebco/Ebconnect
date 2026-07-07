@@ -8,6 +8,8 @@ capped per-frame sample (never full data) went to the LLM.
 import pandas as pd
 import pytest
 
+from _realllm import skip_if_quota
+
 
 def _build_fixtures(tmp_path):
     segments = ["Enterprise", "SMB", "Consumer"]
@@ -130,6 +132,7 @@ def test_join_revenue_by_segment(api_client, tmp_path, parse_sse, answer_event):
     )
     assert r.status_code == 200, r.text
     events = parse_sse(r.text)
+    skip_if_quota(events)
     assert "error" not in [e["event"] for e in events]
     ans = answer_event(events)
     assert ans["status"] == "completed"

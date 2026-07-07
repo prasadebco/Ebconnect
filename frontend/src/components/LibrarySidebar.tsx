@@ -13,6 +13,9 @@ interface Props {
   conversations: ConversationSummary[]
   activeConversationId: string | null
   loading: boolean
+  // Mobile-only: whether the off-canvas drawer is open. Ignored on md+ where
+  // the sidebar is permanently docked.
+  mobileOpen?: boolean
   onSelectDataset: (id: string) => void
   onDeleteDataset: (id: string, name: string) => void
   onSelectConversation: (id: string) => void
@@ -27,14 +30,22 @@ export function LibrarySidebar({
   conversations,
   activeConversationId,
   loading,
+  mobileOpen = false,
   onSelectDataset,
   onDeleteDataset,
   onSelectConversation,
 }: Props) {
   return (
     <aside
+      id="library-sidebar"
       data-testid="library-sidebar"
-      className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:flex dark:border-slate-800 dark:bg-slate-900"
+      // On mobile the sidebar is an off-canvas drawer (fixed, slides in when
+      // toggled) so it never squeezes the chat; on md+ it is permanently
+      // docked. The DOM (and every test-id inside) is always present — it is
+      // only translated off-screen when closed on small viewports.
+      className={`fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white shadow-pop transition-transform duration-200 ease-out md:static md:z-auto md:translate-x-0 md:shadow-none dark:border-slate-800 dark:bg-slate-900 ${
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}
     >
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5 dark:border-slate-800">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">

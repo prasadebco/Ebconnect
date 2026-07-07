@@ -8,6 +8,8 @@
 import pandas as pd
 import pytest
 
+from _realllm import skip_if_quota
+
 
 def _build_sales_csv(path, rows=60):
     regions = ["East", "West", "North", "South"]
@@ -46,7 +48,9 @@ def _upload(client, path, name):
 def _run_query(client, conv_id, question):
     r = client.post(f"/conversations/{conv_id}/query", json={"question": question})
     assert r.status_code == 200, r.text
-    return _parse_sse(r.text)
+    events = _parse_sse(r.text)
+    skip_if_quota(events)
+    return events
 
 
 def _parse_sse(text):

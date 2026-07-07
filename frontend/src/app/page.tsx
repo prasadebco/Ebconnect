@@ -29,6 +29,7 @@ import { LibrarySidebar } from '@/components/LibrarySidebar'
 import { ProfilePanel } from '@/components/ProfilePanel'
 import { UploadDropzone } from '@/components/UploadDropzone'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { humanizeError } from '@/lib/errors'
 
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -160,6 +161,8 @@ export default function Home() {
 
   const [turns, setTurns] = useState<ChatTurn[]>([])
   const [busy, setBusy] = useState(false)
+  // Mobile-only: the library sidebar collapses to an off-canvas drawer.
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refreshLibrary = useCallback(async () => {
@@ -201,7 +204,7 @@ export default function Home() {
       // New upload joins the persistent library immediately.
       await refreshLibrary()
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Upload failed')
+      setUploadError(humanizeError(e instanceof Error ? e.message : 'Upload failed'))
     } finally {
       setUploading(false)
     }
@@ -298,7 +301,7 @@ export default function Home() {
       setFrames(updated.filter((f) => !f.is_primary))
     } catch (e) {
       setAttachError(
-        e instanceof Error ? e.message : 'Could not attach that file',
+        humanizeError(e instanceof Error ? e.message : 'Could not attach that file'),
       )
     } finally {
       setAttaching(false)
@@ -319,7 +322,7 @@ export default function Home() {
       await refreshLibrary()
     } catch (e) {
       setAttachError(
-        e instanceof Error ? e.message : 'Could not add that file',
+        humanizeError(e instanceof Error ? e.message : 'Could not add that file'),
       )
     } finally {
       setAttaching(false)
@@ -356,6 +359,8 @@ export default function Home() {
     const assistantTurn: ChatTurn = {
       id: assistantId,
       role: 'assistant',
+      // Kept so a failed turn can offer a one-click retry of the same question.
+      question,
       status: 'streaming',
       steps: [],
       currentStep: 'Starting…',
@@ -398,7 +403,7 @@ export default function Home() {
           stopTimer()
           updateTurn(assistantId, {
             status: 'error',
-            errorMessage: evt.data.message,
+            errorMessage: humanizeError(evt.data.message),
           })
         }
       }
@@ -420,10 +425,9 @@ export default function Home() {
       stopTimer()
       updateTurn(assistantId, {
         status: 'error',
-        errorMessage:
-          e instanceof Error
-            ? e.message
-            : "Couldn't complete this — try rephrasing.",
+        errorMessage: humanizeError(
+          e instanceof Error ? e.message : null,
+        ),
       })
     } finally {
       stopTimer()
@@ -440,6 +444,21 @@ export default function Home() {
   return (
     <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-950">
       <header className="z-10 flex items-center gap-3 border-b border-slate-200 bg-white bg-gradient-to-r from-white to-accent-50/40 px-6 py-3 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-900">
+        {/* Mobile-only: open the library drawer. Hidden on md+ where the
+            sidebar is always docked. */}
+        <button
+          type="button"
+          data-testid="sidebar-toggle"
+          onClick={() => setSidebarOpen((v) => !v)}
+          aria-label={sidebarOpen ? 'Close library' : 'Open library'}
+          aria-expanded={sidebarOpen}
+          aria-controls="library-sidebar"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50 hover:text-accent-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 md:hidden dark:text-slate-400 dark:ring-slate-700 dark:hover:bg-slate-800 dark:hover:text-accent-300"
+        >
+          <span aria-hidden="true" className="text-base leading-none">
+            ☰
+          </span>
+        </button>
         {/* Static-export app is served under basePath '/app', so plain <img>
             src is NOT auto-prefixed — reference the asset at /app/…. */}
         <img
@@ -463,16 +482,32 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
+        {/* Mobile drawer backdrop — click to dismiss the library. */}
+        {sidebarOpen && (
+          <div
+            data-testid="sidebar-backdrop"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+            className="fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-sm md:hidden"
+          />
+        )}
         <LibrarySidebar
           datasets={library}
           activeDatasetId={dataset?.id ?? null}
           conversations={datasetConversations}
           activeConversationId={conversation?.id ?? null}
           loading={libLoading}
-          onSelectDataset={handleSelectDataset}
+          mobileOpen={sidebarOpen}
+          onSelectDataset={(id) => {
+            setSidebarOpen(false)
+            handleSelectDataset(id)
+          }}
           onDeleteDataset={handleDeleteDataset}
-          onSelectConversation={handleReopenConversation}
+          onSelectConversation={(id) => {
+            setSidebarOpen(false)
+            handleReopenConversation(id)
+          }}
         />
 
         <main className="flex min-w-0 flex-1 flex-col">

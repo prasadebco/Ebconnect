@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
+import { QUOTA_SKIP_REASON, isQuotaExhausted } from './_quota'
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'sales.csv')
 
@@ -27,10 +28,14 @@ test('ambiguous question → clarify turn → answer inline → resumes to an an
   await input.fill('show me the best ones')
   await page.getByTestId('ask-button').click()
 
-  // The run resolves to EITHER a clarifying turn OR a (best-guess) answer.
+  // The run resolves to a clarifying turn, a (best-guess) answer, or — under
+  // free-tier quota exhaustion — the friendly rate-limit bubble. In the last
+  // case the clarify/answer assertions are correctly skipped (as pytest does).
   const clarify = page.getByTestId('clarify-turn').last()
   const answer = page.getByTestId('answer-content').last()
-  await expect(clarify.or(answer)).toBeVisible({ timeout: 60_000 })
+  const error = page.getByTestId('error-message').last()
+  await expect(clarify.or(answer).or(error)).toBeVisible({ timeout: 60_000 })
+  test.skip(await isQuotaExhausted(page), QUOTA_SKIP_REASON)
 
   if (await clarify.isVisible()) {
     // A clarifying question renders distinctly (not an error, not an answer).
@@ -59,10 +64,13 @@ test('under-specified metric → best-guess answer carries an uncertainty badge'
   await input.fill('which region is doing well and by how much?')
   await page.getByTestId('ask-button').click()
 
-  // Wait for the run to settle into a clarify turn or an answer.
+  // Wait for the run to settle into a clarify turn, an answer, or the friendly
+  // quota bubble (free-tier exhaustion → skip the confidence-badge assertion).
   const clarify = page.getByTestId('clarify-turn').last()
   const answer = page.getByTestId('answer-content').last()
-  await expect(clarify.or(answer)).toBeVisible({ timeout: 60_000 })
+  const error = page.getByTestId('error-message').last()
+  await expect(clarify.or(answer).or(error)).toBeVisible({ timeout: 60_000 })
+  test.skip(await isQuotaExhausted(page), QUOTA_SKIP_REASON)
 
   // If it answered, a medium/low-confidence answer surfaces the badge; a
   // high-confidence answer stays clean (no badge). Both are valid — assert the

@@ -7,6 +7,8 @@ import pytest
 
 import json
 
+from _realllm import skip_if_quota
+
 
 def parse_sse(text: str) -> list[dict]:
     events, cur = [], {}
@@ -64,6 +66,7 @@ def test_retry_with_changed_approach_still_correct(api_client, tmp_path):
     )
     assert r.status_code == 200, r.text
     events = parse_sse(r.text)
+    skip_if_quota(events)
     kinds = [e["event"] for e in events]
     assert "error" not in kinds, events
     assert "answer" in kinds

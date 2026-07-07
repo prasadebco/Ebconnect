@@ -171,6 +171,7 @@ export function AttachPanel({
       {error && (
         <div
           data-testid="attach-error"
+          role="alert"
           className="mt-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
         >
           {error}

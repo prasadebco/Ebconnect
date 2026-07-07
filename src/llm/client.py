@@ -1,9 +1,47 @@
+import re
 import time
 
 from config.settings import get_settings
 from observability.events import get_logger
 
 _log = get_logger("llm")
+
+# Substrings that mark a quota / rate-limit provider failure (Gemini 429 /
+# RESOURCE_EXHAUSTED / free-tier quota exceeded). Surfaced to the user as a
+# friendly, actionable message rather than a raw exception string.
+_QUOTA_MARKERS = (
+    "429", "resource_exhausted", "resource exhausted",
+    "quota", "rate limit", "rate-limit", "ratelimit",
+)
+
+# Node wrappers that leak internal exception text (e.g. "plan failed: ...").
+_NODE_WRAP_RE = re.compile(r"^(plan|write_code|reflect|answer) failed:", re.IGNORECASE)
+
+_QUOTA_MESSAGE = (
+    "The AI service is temporarily rate-limited or out of quota — "
+    "please try again shortly."
+)
+_GENERIC_MESSAGE = (
+    "Something went wrong while analyzing your data. Please try again in a moment."
+)
+
+
+def friendly_error(raw: str | None) -> str:
+    """Map an internal error string to a clean, user-facing message.
+
+    - Quota / rate-limit (429 / RESOURCE_EXHAUSTED) → a friendly retry message.
+    - A node-wrapped raw exception ("plan failed: <traceback>") → a generic
+      clean message (never leak the traceback to the user).
+    - An already-friendly message (e.g. verify's "could not produce a valid
+      result…") is passed through unchanged.
+    """
+    text = (raw or "").strip()
+    low = text.lower()
+    if any(m in low for m in _QUOTA_MARKERS):
+        return _QUOTA_MESSAGE
+    if _NODE_WRAP_RE.match(text):
+        return _GENERIC_MESSAGE
+    return text or "The analysis failed. Please try again."
 
 # Substrings that mark a transient/retryable Gemini failure (rate limits,
 # overload, upstream 5xx, connection resets). Hard errors (auth, bad request)

@@ -6,6 +6,8 @@ import json
 import pandas as pd
 import pytest
 
+from _realllm import skip_if_quota
+
 
 def parse_sse(text: str) -> list[dict]:
     events, cur = [], {}
@@ -113,6 +115,7 @@ def test_transient_gemini_error_recovers_end_to_end(api_client, tmp_path, monkey
     )
     assert r.status_code == 200, r.text
     events = parse_sse(r.text)
+    skip_if_quota(events)
     kinds = [e["event"] for e in events]
     assert state["failed"] is True          # the transient error did fire
     assert "error" not in kinds, events     # but the run recovered

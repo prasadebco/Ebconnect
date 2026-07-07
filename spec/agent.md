@@ -17,9 +17,9 @@
 | `reflect` | Google Gemini | `gemini-3.1-pro` | Diagnose a failed/implausible result, change strategy |
 | `answer` | Google Gemini | `gemini-3.1-pro` | Compose clean prose + chart choice + follow-ups |
 
-Provider auto-detected from `AGENT_GEMINI_API_KEY`; model overridable via `AGENT_LLM_MODEL`. (`execute_local` and `verify`'s mechanical checks make **no** LLM call.)
+Provider auto-detected from `AGENT_GEMINI_API_KEY`; model driven by `AGENT_LLM_MODEL`. The `Model ID` column above is the design target; the **effective runtime model is whatever `AGENT_LLM_MODEL` specifies** — delivered/tested on **`gemini-2.5-flash`** (free-tier quota); `gemini-3.1-pro` needs paid quota. (`execute_local` and `verify`'s mechanical checks make **no** LLM call.)
 
-**Fallback behaviour:** Gemini calls retry with exponential backoff (bounded); on repeated failure the run ends with a surfaced error message in the chat turn (no offline stub — tests use the real API via `.env`).
+**Fallback behaviour:** Gemini calls retry with bounded exponential backoff on transient errors; on repeated failure the run ends with a **friendly** surfaced error in the chat turn (quota/429 → "temporarily rate-limited or out of quota — please try again shortly."). Raw provider strings never reach the user (see `friendly_error`, `src/llm/client.py`). No offline stub — tests use the real API via `.env`.
 
 **Prompt strategy:** system/user split. Prompts live in `src/prompts/` (`plan.md`, `write_code.md`, `reflect.md`, `answer.md`). Gemini is instructed to return **structured JSON** (e.g. `{"needs_clarification": bool, "clarifying_question": str, "code": str, "approach": str}`). **Only** the question, the compact profile, and a capped row sample go in the prompt — never the full dataset.
 
@@ -62,7 +62,11 @@ class AgentState(TypedDict, total=False):
     exec_result: dict | None          # sandbox JSON result
     attempts: int                     # retry counter (starts 0)
     verify_notes: str | None          # why a result was rejected
-    confidence: str                   # "high" | "flagged"
+    confidence: str                   # graded: "high" | "medium" | "low"
+                                      #  - high   : clean pass, no self-correction
+                                      #  - medium : clean pass, but the loop had to self-correct
+                                      #  - low    : capped-out best-guess (flagged, verify notes unresolved)
+                                      # a needs_clarification turn carries NO grade (None)
 
     # Output
     answer_text: str | None           # clean prose + key numbers
@@ -100,8 +104,8 @@ class AgentState(TypedDict, total=False):
 | Sandbox subprocess | Run pandas vs raw data | set `exec_result.error`; route to `verify` → retry |
 
 ### `verify`
-**Reads:** `exec_result`, `question`, `attempts`. **Writes:** `verify_notes`, `confidence`.
-**LLM call:** no (mechanical) in P1; Gemini-assisted plausibility check added in P4. Checks the result is well-formed, non-empty, shaped sensibly (row/column/null/NaN/type sanity). Emits "Verifying result…". Decides pass / retry / give-up-flagged.
+**Reads:** `exec_result`, `question`, `attempts`, `retried`. **Writes:** `verify_notes`, `confidence`.
+**LLM call:** no (mechanical). Checks the result is well-formed, non-empty, shaped sensibly (row/column/null/NaN/type sanity). Emits "Verifying result…". Decides pass / retry / give-up-flagged. Grades confidence on a clean pass: `high` normally, `medium` if the loop already self-corrected (`retried`). A capped-out, unusable result (crash/timeout/no result) is turned into a clean surfaced `error` instead of a fabricated answer.
 
 ### `reflect` (P4-hardened; thin in P1)
 **Reads:** `exec_result`, `verify_notes`, `approach`. **Writes:** `approach`, `verify_notes`.
@@ -112,8 +116,8 @@ class AgentState(TypedDict, total=False):
 **LLM call:** yes (Gemini). Composes clean prose + key numbers, picks a Recharts spec when chartable, and (P3) 2–3 follow-ups. Flags low-confidence best-guesses. Emits "Composing answer…".
 
 ### `ask_clarification`
-**Reads:** `clarifying_question`. **Writes:** `answer_text` (= the clarifying question), `status="needs_clarification"`.
-**LLM call:** no. Terminal branch that returns a question instead of an answer.
+**Reads:** `clarifying_question`. **Writes:** `answer_text` (= the clarifying question), `status="needs_clarification"`, `confidence=None`.
+**LLM call:** no. Terminal branch that returns a question instead of an answer. A clarification is NOT a graded answer, so it carries no confidence grade (`None`) — keyed off `status="needs_clarification"`, not a confidence value.
 
 ### `handle_error` / `finalize`
 Standard terminal nodes: `handle_error` sets `status="failed"`, persists `error`; `finalize` sets `status="completed"` and records `elapsed_ms`, `token_usage`, `cost_usd`, `steps` on the `Message`.
@@ -141,7 +145,7 @@ verify ──(pass)──────────────► answer ──�
   │
   ├──(fail & attempts < MAX)──► reflect ──► write_code   (retry loop)
   │
-  └──(fail & attempts >= MAX)─► answer (flagged best-guess) ──► finalize ──► END
+  └──(fail & attempts >= MAX)─► answer (low-confidence best-guess) ──► finalize ──► END
 ```
 
 **Conditional edges:**
@@ -154,7 +158,7 @@ verify ──(pass)──────────────► answer ──�
 | `write_code` | `state["error"]` | `handle_error` |
 | `verify` | result passes checks | `answer` |
 | `verify` | fails & `attempts < MAX_ATTEMPTS` | `reflect` |
-| `verify` | fails & `attempts >= MAX_ATTEMPTS` | `answer` (confidence=`flagged`) |
+| `verify` | fails & `attempts >= MAX_ATTEMPTS` | `answer` (confidence=`low`, flagged best-guess) — unless the result is wholly unusable, then a clean surfaced `error` |
 
 `MAX_ATTEMPTS` env-configurable (`AGENT_MAX_ATTEMPTS`, default 3).
 

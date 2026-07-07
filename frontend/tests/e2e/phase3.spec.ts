@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
+import { QUOTA_SKIP_REASON, isQuotaExhausted } from './_quota'
 
 const XLSX = path.join(__dirname, 'fixtures', 'book.xlsx')
 const CUSTOMERS = path.join(__dirname, 'fixtures', 'customers.csv')
@@ -27,36 +28,50 @@ test('multi-sheet xlsx → pick sheet → ask; attach a file → join; chips, co
   await expect(page.getByTestId('column-list')).toContainText('region')
 
   // ── Ask a question against the chosen sheet. ──
+  // The answer/chip/show-code/export features below all depend on a REAL model
+  // answer; under free-tier quota exhaustion the friendly rate-limit bubble is
+  // the correct outcome and those assertions are skipped (mirroring pytest).
   const input = page.getByTestId('question-input')
   await input.fill('what is total revenue by region?')
   await page.getByTestId('ask-button').click()
-  await expect(page.getByTestId('answer-content').first()).toBeVisible({
-    timeout: 60_000,
-  })
+  const answer = page.getByTestId('answer-content').first()
+  const error = page.getByTestId('error-message').last()
+  await expect(answer.or(error)).toBeVisible({ timeout: 60_000 })
+  const quotaExhausted = await isQuotaExhausted(page)
 
-  // ── Follow-up chips are real; clicking one submits the next question. ──
-  const chip = page.getByTestId('followup-chip').first()
-  await expect(chip).toBeVisible({ timeout: 15_000 })
-  await chip.click()
-  await expect(page.getByTestId('live-status')).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByTestId('answer-content').last()).toBeVisible({
-    timeout: 60_000,
-  })
+  if (!quotaExhausted) {
+    await expect(answer).toBeVisible({ timeout: 60_000 })
 
-  // ── Show-code toggle reveals the pandas, hidden by default. ──
-  const toggle = page.getByTestId('show-code-toggle').first()
-  await expect(toggle).toBeVisible()
-  await expect(page.getByTestId('code-block').first()).toBeHidden()
-  await toggle.click()
-  await expect(page.getByTestId('code-block').first()).toBeVisible()
+    // ── Follow-up chips are real; clicking one submits the next question. ──
+    const chip = page.getByTestId('followup-chip').first()
+    await expect(chip).toBeVisible({ timeout: 15_000 })
+    await chip.click()
+    await expect(page.getByTestId('live-status')).toBeVisible({
+      timeout: 15_000,
+    })
+    await expect(page.getByTestId('answer-content').last()).toBeVisible({
+      timeout: 60_000,
+    })
 
-  // ── Attach a second file and ask a join question spanning both. ──
+    // ── Show-code toggle reveals the pandas, hidden by default. ──
+    const toggle = page.getByTestId('show-code-toggle').first()
+    await expect(toggle).toBeVisible()
+    await expect(page.getByTestId('code-block').first()).toBeHidden()
+    await toggle.click()
+    await expect(page.getByTestId('code-block').first()).toBeVisible()
+  }
+
+  // ── Attach a second file (non-LLM: the frame list must show both). ──
   await page.getByTestId('add-file').click()
   const uploadInput = page.getByTestId('attach-file-input')
   await uploadInput.setInputFiles(CUSTOMERS)
   await expect(page.getByTestId('frame-item')).toHaveCount(2, {
     timeout: 30_000,
   })
+
+  // The join answer + CSV export depend on a real model answer — skip the
+  // remainder under quota exhaustion.
+  test.skip(quotaExhausted, QUOTA_SKIP_REASON)
 
   await input.fill('join to customers and show revenue vs target by region')
   await page.getByTestId('ask-button').click()

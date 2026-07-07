@@ -3,10 +3,12 @@ from google.genai import types
 
 
 class GeminiProvider:
-    # Spec targets "gemini-3.1-pro"; the GA alias is not yet exposed on the API,
-    # so the effective default is the currently-available 3.1-pro preview.
-    # Override via AGENT_LLM_MODEL once the GA alias ships.
-    DEFAULT_MODEL = "gemini-3.1-pro-preview"
+    # HARD CONSTRAINT: this app must run on a NON-CHARGEABLE FREE-TIER Gemini key.
+    # The default is therefore the free-tier model gemini-2.5-flash — never a Pro
+    # model (gemini-3.1-pro / gemini-2.5-pro), which require billing. Override via
+    # AGENT_LLM_MODEL (e.g. gemini-2.5-flash-lite as a cheaper free fallback, or a
+    # Pro model once paid quota is available).
+    DEFAULT_MODEL = "gemini-2.5-flash"
 
     def __init__(self, api_key: str, model: str) -> None:
         self._client = genai.Client(api_key=api_key)

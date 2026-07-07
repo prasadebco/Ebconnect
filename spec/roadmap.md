@@ -1,5 +1,7 @@
 # Roadmap
 
+> **Build status: SHIPPED.** Phases 1–5 are **DELIVERED** — the full product is built, wired, and covered by the regression suite. The effective runtime model is `gemini-2.5-flash` (via `AGENT_LLM_MODEL`; free-tier quota); real-LLM tests run against that model. Per-phase delivery is marked below.
+
 ---
 
 ## What This Agent Does
@@ -44,7 +46,7 @@ Replaces the manual loop of opening a spreadsheet, writing pandas/SQL/formulas, 
 
 > **Phase 1 is the smallest first-time-right user-testable win.** Real backend on the one core path (single CSV → profile → ask → verified answer + chart). Frontend visually complete: real UI for that path PLUS clearly-labelled NON-FUNCTIONAL stubs for later features. The agentic loop is wired from day one even if the clarify/retry branches are thin.
 
-### Phase 1 — Ask one CSV a question
+### Phase 1 — Ask one CSV a question   ✅ DELIVERED
 
 - **Goal:** Upload ONE CSV → agent auto-profiles it → user asks ONE plain-English question in a chat over that dataset → agent writes/runs pandas code locally, iterates if needed, and returns a clean answer (prose + key numbers) with an interactive chart when appropriate. Live step updates, elapsed timer, and per-query Gemini token/cost are minimal-but-real.
 - **Independent slices (parallel build units):**
@@ -56,7 +58,7 @@ Replaces the manual loop of opening a spreadsheet, writing pandas/SQL/formulas, 
 - **Gate command:** `uv run pytest tests/phase1 -q` (real Gemini via `.env`, real SQLite via `AGENT_DATABASE_URL`) **and** `cd frontend && pnpm exec playwright test tests/e2e/phase1.spec.ts`.
 - **How the user tests it (handoff seed):** Run `uv run python -m src` (backend on :8001), open `http://localhost:8001/app/`. Drag a CSV (e.g. a sales export) onto the dropzone → a profile panel appears (columns, types, row count). Type "what is total revenue by region?" → watch the live steps ("Profiling data…", "Writing query…", "Running locally…", "Verifying result…") with the elapsed timer, then read the prose answer + key numbers + a bar chart, and the per-query token/cost line. Labelled stubs (greyed, "Coming soon"): the dataset library sidebar, "Add another file"/Excel-sheet controls, the Export button, the follow-up-suggestion chips, and the "Show code" toggle — these are visible but non-functional by design.
 
-### Phase 2 — Persistent library & return-across-days chat
+### Phase 2 — Persistent library & return-across-days chat   ✅ DELIVERED
 
 - **Goal:** Datasets become a persistent library the user returns to across days, and chat history persists per dataset — reopen a conversation and continue with follow-ups that use prior-turn context.
 - **Independent slices (parallel build units):**
@@ -67,7 +69,7 @@ Replaces the manual loop of opening a spreadsheet, writing pandas/SQL/formulas, 
 - **Gate command:** `uv run pytest tests/phase2 -q` (asserts: restart process → datasets + conversations still listable; a follow-up question correctly references the prior turn's result).
 - **How the user tests it (handoff seed):** Upload two CSVs across two "sessions" (restart the server between them). Reopen the app → both appear in the library sidebar. Click one → its past chat reloads. Ask "now break that down by month" as a follow-up → the answer builds on the previous question. Stubs still labelled: multi-file join, Excel sheets, export, follow-up chips, show-code.
 
-### Phase 3 — Multi-source, richer output, and export
+### Phase 3 — Multi-source, richer output, and export   ✅ DELIVERED
 
 - **Goal:** Analyze multi-sheet Excel workbooks and join across multiple files in one conversation; deliver the full clean-output experience — export results, 2–3 suggested follow-up questions after each answer, and a "Show code" toggle.
 - **Independent slices (parallel build units):**
@@ -79,7 +81,7 @@ Replaces the manual loop of opening a spreadsheet, writing pandas/SQL/formulas, 
 - **Gate command:** `uv run pytest tests/phase3 -q` (asserts: a two-file join returns the correct joined aggregate vs a ground-truth pandas merge; a multi-sheet xlsx profiles every sheet; export returns a non-empty file; each answer yields 2–3 follow-ups; stored code is retrievable).
 - **How the user tests it (handoff seed):** Upload an `.xlsx` with 2+ sheets → pick a sheet, ask a question. Add a second CSV to the conversation → ask a question that spans both files (e.g. "join orders to customers and show revenue by segment"). Click a follow-up chip to auto-ask it, toggle "Show code" to see the pandas, and click Export to download the result.
 
-### Phase 4 — Agentic Stack Upgrade (harden the loop)
+### Phase 4 — Agentic Stack Upgrade (harden the loop)   ✅ DELIVERED
 
 - **Goal:** Make the iterate/self-correct/clarify loop production-grade: bounded retries with a *different* approach on failure, robust clarify-vs-answer decisioning, and hardened error handling / timeouts on both the sandbox and Gemini calls.
 - **Independent slices (parallel build units):**
@@ -90,7 +92,7 @@ Replaces the manual loop of opening a spreadsheet, writing pandas/SQL/formulas, 
 - **Gate command:** `uv run pytest tests/phase4 -q` (asserts: a deliberately-ambiguous question yields a clarifying question; a first-attempt code error triggers a retry with a changed approach and still returns a correct answer; a runaway code snippet is killed by the timeout and surfaced cleanly).
 - **How the user tests it (handoff seed):** Ask an ambiguous question ("show me the best ones") → the agent asks a clarifying question instead of guessing. Ask something that trips a first code attempt → watch it retry and still answer. Ask a genuinely under-specified metric → get a best-guess answer with a "flagged — verify" badge.
 
-### Phase 5 — Complete Agentic System (no stubs)
+### Phase 5 — Complete Agentic System (no stubs)   ✅ DELIVERED
 
 - **Goal:** Every capability real and polished end-to-end; no labelled stubs remain; full clean-by-default output, cost/timer/steps, library, multi-source, export, follow-ups, and the hardened loop all wired and covered by the full regression suite.
 - **Independent slices (parallel build units):**
