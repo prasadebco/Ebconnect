@@ -55,6 +55,35 @@ Single-page web app: a chat-centric data-analysis workspace. Next.js 15 + React 
 - Answer a clarifying-question turn as the next message.
 - Toggle light/dark theme.
 
+### Screen: Dashboard (Phase 6 — in-SPA view switch)
+
+**Purpose:** Show every pinned answer as a persistent tile the user curates, rendered from the stored snapshot (no query re-run). New capability: see `spec/capabilities/dashboard_pinning.md`.
+
+**Navigation:** a header nav switch **Analyze | Dashboard** toggles between the Workspace and the Dashboard **client-side, within the SPA** (no route change) so it works under Next.js static export at `basePath '/app'`. The Workspace state (open conversation, dataset) is preserved when switching back.
+
+**Layout & elements (all REAL, Ebco blue-forward, light + dark):**
+
+| Element | Notes |
+|---------|-------|
+| Header nav switch (Analyze \| Dashboard) | Active state clearly indicated; keyboard-focusable, a11y labels |
+| Responsive tile grid | Premium card grid (1 col mobile → 2–3 cols desktop); each tile is a pinned result |
+| Tile contents | Title (the question), dataset name + timestamp, prose answer, interactive Recharts chart, summary table, optional confidence badge — all from the stored snapshot; no Gemini call, no re-run |
+| Unpin control | Per-tile remove button → `DELETE /dashboard/tiles/{id}`; tile disappears from the grid |
+| Open-in-chat (nice-to-have) | Clicking a tile deep-links back to its conversation in the Workspace via the in-SPA switch |
+| Empty state | When no tiles: a tasteful centered empty state ("Pin an answer to build your dashboard"), intentional in both themes |
+
+**Pin action (Workspace answer card):** each assistant answer card gains a **"Pin to dashboard"** toolbar action (alongside Show code / Export) with a clear **pinned vs unpinned** state. Pinning calls `POST /dashboard/tiles` with the message id; the button flips to a pinned/"Pinned" state.
+
+### Collapsible icon-rail sidebar (Phase 6)
+
+The left library/nav sidebar (`LibrarySidebar`) becomes a **slim icon rail by default** (icons only, minimal width) that **expands to the full panel on hover/click** and collapses again. Details:
+
+- **Default collapsed** on desktop: icon-only rail; dataset and conversation items render as icons/avatars with labels hidden.
+- **Expand on hover or click**; a pin/toggle keeps it expanded if the user prefers. Smooth width transition, Ebco blue-forward, light + dark.
+- **Mobile preserved:** the existing responsive **off-canvas drawer** plus `sidebar-toggle` and `sidebar-backdrop` behavior is unchanged.
+- **Test-ids preserved:** all existing sidebar test-ids remain in the DOM in the collapsed state — `library-sidebar`, `library-item`, `dataset-delete`, `conversation-item`, `sidebar-toggle`, `sidebar-backdrop`, etc. Collapsing hides labels (CSS), it does not remove items from the DOM.
+- **A11y:** collapsed items keep accessible names (icons carry `aria-label`/title); expand/collapse is keyboard-operable.
+
 ## Confidence & uncertainty rendering
 
 The answer confidence scale is **`high` | `medium` | `low`** (`medium` = the agent self-corrected during the run; `low` = a flagged best-guess after exhausting retries). The UI shows a subtle "best guess / verify" badge for `medium` and `low`, and renders clean with no badge for `high`. A `needs_clarification` turn carries **no** confidence grade and renders as a question awaiting reply.

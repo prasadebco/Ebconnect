@@ -1,6 +1,6 @@
 # Capabilities Index
 
-> One file per capability. These four span the whole product; phases advance them incrementally (see `spec/roadmap.md`).
+> One file per capability. These span the whole product; phases advance them incrementally (see `spec/roadmap.md`).
 
 ## Capabilities in This Project
 
@@ -10,6 +10,7 @@
 | Conversational analysis loop | [conversational_analysis.md](conversational_analysis.md) | Phase 1 (single-CSV), Phase 4 (hardened) |
 | Multi-source analysis | [multi_source_analysis.md](multi_source_analysis.md) | Phase 3 |
 | Clean result presentation | [result_presentation.md](result_presentation.md) | Phase 1 (prose+chart+steps/cost), Phase 3 (export/follow-ups/show-code) |
+| Pinnable dashboard & collapsible sidebar | [dashboard_pinning.md](dashboard_pinning.md) | Phase 6 |
 
 ## How to Add a New Capability
 

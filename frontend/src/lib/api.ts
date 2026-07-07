@@ -5,6 +5,7 @@ import type {
   Conversation,
   ConversationDetail,
   ConversationSummary,
+  DashboardTile,
   Dataset,
   DatasetSummary,
   Frame,
@@ -155,6 +156,82 @@ export async function downloadExport(
     // Revoke on the next tick so the click has a chance to start the download.
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
+}
+
+// ── Phase 6: Pinnable Dashboard ────────────────────────────────────────
+// All responses are BARE objects/arrays (no {data} envelope), same-origin,
+// absolute-from-origin paths.
+
+// Normalise a single tile payload defensively — the backend snapshots the
+// answer at pin time; fields may arrive nested or flat.
+function normaliseTile(payload: unknown): DashboardTile {
+  const o = (payload ?? {}) as Record<string, unknown>
+  return {
+    id: String(o.id ?? ''),
+    message_id: String(o.message_id ?? ''),
+    conversation_id: String(o.conversation_id ?? ''),
+    dataset_id:
+      typeof o.dataset_id === 'string' ? o.dataset_id : undefined,
+    dataset_name:
+      typeof o.dataset_name === 'string' ? o.dataset_name : undefined,
+    title: String(o.title ?? o.question ?? 'Pinned insight'),
+    content: String(o.content ?? ''),
+    chart: (o.chart ?? null) as DashboardTile['chart'],
+    table: (o.table ?? null) as DashboardTile['table'],
+    confidence: (o.confidence ?? null) as DashboardTile['confidence'],
+    display_order:
+      typeof o.display_order === 'number' ? o.display_order : undefined,
+    created_at: typeof o.created_at === 'string' ? o.created_at : undefined,
+  }
+}
+
+// Pin a completed assistant answer onto the Dashboard. Idempotent-safe on the
+// backend (returns the existing tile if already pinned).
+export async function pinTile(messageId: string): Promise<DashboardTile> {
+  const res = await fetch('/dashboard/tiles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message_id: messageId }),
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return normaliseTile(await res.json())
+}
+
+// List all pinned tiles (ordered display_order then newest-first). Reads a
+// bare array; tolerates a { tiles: [...] } wrapper defensively.
+export async function listTiles(): Promise<DashboardTile[]> {
+  const res = await fetch('/dashboard/tiles')
+  if (!res.ok) throw new Error(await parseError(res))
+  const body = await res.json()
+  const raw = Array.isArray(body)
+    ? body
+    : ((body as { tiles?: unknown })?.tiles ?? [])
+  if (!Array.isArray(raw)) return []
+  return raw.map(normaliseTile).filter((t) => t.id)
+}
+
+// Unpin/remove a tile. Backend returns { deleted: true }.
+export async function unpinTile(id: string): Promise<void> {
+  const res = await fetch(`/dashboard/tiles/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await parseError(res))
+}
+
+// Optional reorder (nice-to-have). Defensive: if the backend doesn't
+// implement PATCH /dashboard/tiles/reorder it will 404/405 — callers can
+// catch and fall back to newest-first.
+export async function reorderTiles(
+  order: string[],
+): Promise<DashboardTile[]> {
+  const res = await fetch('/dashboard/tiles/reorder', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order }),
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  const body = await res.json()
+  const raw = Array.isArray(body) ? body : ((body as { tiles?: unknown })?.tiles ?? [])
+  if (!Array.isArray(raw)) return []
+  return raw.map(normaliseTile).filter((t) => t.id)
 }
 
 /**

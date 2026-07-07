@@ -114,6 +114,57 @@ event: answer  data: {"message_id":"uuid","content":"...","chart":{...}|null,"ta
 
 **Purpose:** Download the result of an answer as `format=csv` (table) or `format=png` (chart). Returns a file stream; 404 if no exportable result.
 
+### `POST /dashboard/tiles`  (Phase 6)
+
+**Purpose:** Pin an existing completed assistant answer as a Dashboard tile. Snapshots the message's prose/chart/table/context so the tile renders without re-running the query (no Gemini call). New capability: [dashboard_pinning.md](capabilities/dashboard_pinning.md).
+
+**Request:**
+```json
+{ "message_id": "uuid" }
+```
+
+**Response (bare object):**
+```json
+{
+  "id": "uuid",
+  "message_id": "uuid",
+  "conversation_id": "uuid",
+  "dataset_id": "uuid",
+  "dataset_name": "sales_2025.csv",
+  "title": "what is total revenue by region?",
+  "content": "Total revenue is highest in the East…",
+  "chart": { "type": "bar", "x": "region", "y": "revenue", "data": [] },
+  "table": { "columns": [], "rows": [] },
+  "confidence": "high",
+  "display_order": 0,
+  "created_at": "2026-07-07T10:00:00Z"
+}
+```
+
+**Error cases:**
+| Status | Condition |
+|--------|-----------|
+| 400 | Unknown `message_id`, or the message is not a completed assistant answer |
+
+> If the message is already pinned, the existing tile is returned (idempotent-safe) rather than creating a duplicate.
+
+### `GET /dashboard/tiles`  (Phase 6)
+
+**Purpose:** List all pinned tiles for the Dashboard view. Ordered by `display_order` then newest-first (`created_at` desc). Returns a **bare array**:
+```json
+[ { "id": "uuid", "title": "…", "dataset_name": "…", "content": "…",
+    "chart": {}, "table": {}, "confidence": "high",
+    "conversation_id": "uuid", "display_order": 0, "created_at": "…" } ]
+```
+
+### `DELETE /dashboard/tiles/{id}`  (Phase 6)
+
+**Purpose:** Unpin/remove a tile. Returns `{ "deleted": true }`. 404 if unknown.
+
+### `PATCH /dashboard/tiles/reorder`  (Phase 6 — optional / nice-to-have)
+
+**Purpose:** Re-sequence tiles. Request `{ "order": ["tile-id-1", "tile-id-2", …] }`; sets each tile's `display_order` to its index. Returns the reordered bare array. **Drag-reorder UI is deferred** (see roadmap Phase 6) — if this endpoint is not built, tiles stay newest-first.
+
 ## Authentication
 
 None — single-user, self-hosted, bound to localhost. There are no accounts, sessions, or API keys for callers. The only secret is the server-side `AGENT_GEMINI_API_KEY` (in `.env`), never exposed to the browser. If ever remotely hosted, front it with a reverse proxy / network ACL — out of scope for this build.

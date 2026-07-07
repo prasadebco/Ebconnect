@@ -8,8 +8,11 @@ import {
   getDataset,
   listConversations,
   listDatasets,
+  listTiles,
   openConversation,
+  pinTile,
   streamQuery,
+  unpinTile,
   uploadDataset,
 } from '@/lib/api'
 import type {
@@ -17,6 +20,7 @@ import type {
   AnswerStatus,
   Conversation,
   ConversationSummary,
+  DashboardTile,
   Dataset,
   DatasetSummary,
   Frame,
@@ -25,11 +29,14 @@ import type {
 } from '@/lib/types'
 import { ChatPane } from '@/components/ChatPane'
 import type { ChatTurn } from '@/components/ChatMessage'
+import { Dashboard } from '@/components/Dashboard'
 import { LibrarySidebar } from '@/components/LibrarySidebar'
 import { ProfilePanel } from '@/components/ProfilePanel'
 import { UploadDropzone } from '@/components/UploadDropzone'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { humanizeError } from '@/lib/errors'
+
+type View = 'analyze' | 'dashboard'
 
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -164,6 +171,88 @@ export default function Home() {
   // Mobile-only: the library sidebar collapses to an off-canvas drawer.
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Phase 6 — in-SPA view switch (Analyze | Dashboard) + pinned tiles.
+  const [view, setView] = useState<View>('analyze')
+  const [tiles, setTiles] = useState<DashboardTile[]>([])
+  const [tilesLoading, setTilesLoading] = useState(false)
+  const [tilesError, setTilesError] = useState<string | null>(null)
+  const [pinBusyId, setPinBusyId] = useState<string | null>(null)
+
+  const loadTiles = useCallback(async () => {
+    setTilesLoading(true)
+    setTilesError(null)
+    try {
+      setTiles(await listTiles())
+    } catch (e) {
+      setTilesError(
+        humanizeError(e instanceof Error ? e.message : 'Could not load the dashboard'),
+      )
+    } finally {
+      setTilesLoading(false)
+    }
+  }, [])
+
+  // Load pinned tiles on mount so answer cards reflect their pinned state.
+  useEffect(() => {
+    loadTiles()
+  }, [loadTiles])
+
+  // The tile pinning a given message (or null when unpinned).
+  const pinnedTileFor = useCallback(
+    (messageId: string): string | null => {
+      const t = tiles.find((x) => x.message_id === messageId)
+      return t ? t.id : null
+    },
+    [tiles],
+  )
+
+  // Pin or unpin an answer from its card.
+  const handleTogglePin = useCallback(
+    async (messageId: string, existingTileId: string | null) => {
+      if (pinBusyId) return
+      setPinBusyId(messageId)
+      try {
+        if (existingTileId) {
+          await unpinTile(existingTileId)
+          setTiles((prev) => prev.filter((t) => t.id !== existingTileId))
+        } else {
+          const tile = await pinTile(messageId)
+          setTiles((prev) =>
+            prev.some((t) => t.id === tile.id) ? prev : [tile, ...prev],
+          )
+        }
+      } catch (e) {
+        setTilesError(
+          humanizeError(e instanceof Error ? e.message : 'Could not update the pin'),
+        )
+      } finally {
+        setPinBusyId(null)
+      }
+    },
+    [pinBusyId],
+  )
+
+  // Unpin from a Dashboard tile's remove control.
+  const handleUnpinTile = useCallback(async (tileId: string) => {
+    setPinBusyId(tileId)
+    try {
+      await unpinTile(tileId)
+      setTiles((prev) => prev.filter((t) => t.id !== tileId))
+    } catch (e) {
+      setTilesError(
+        humanizeError(e instanceof Error ? e.message : 'Could not unpin that tile'),
+      )
+    } finally {
+      setPinBusyId(null)
+    }
+  }, [])
+
+  const showDashboard = useCallback(() => {
+    setView('dashboard')
+    setSidebarOpen(false)
+    loadTiles()
+  }, [loadTiles])
 
   const refreshLibrary = useCallback(async () => {
     try {
@@ -485,11 +574,68 @@ export default function Home() {
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
           Local &amp; private
         </span>
-        <div className="ml-auto flex items-center gap-2">
+        {/* In-SPA view switch — Analyze | Dashboard. Client-side React state
+            (no route change) so static export + basePath '/app' are intact. */}
+        <nav
+          aria-label="Views"
+          className="ml-auto flex items-center gap-1 rounded-lg bg-white/10 p-0.5 ring-1 ring-inset ring-white/20"
+        >
+          <button
+            type="button"
+            data-testid="nav-analyze"
+            aria-current={view === 'analyze' ? 'page' : undefined}
+            onClick={() => setView('analyze')}
+            className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+              view === 'analyze'
+                ? 'bg-white text-accent-800 shadow-sm'
+                : 'text-white/80 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            Analyze
+          </button>
+          <button
+            type="button"
+            data-testid="nav-dashboard"
+            aria-current={view === 'dashboard' ? 'page' : undefined}
+            onClick={showDashboard}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+              view === 'dashboard'
+                ? 'bg-white text-accent-800 shadow-sm'
+                : 'text-white/80 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            Dashboard
+            {tiles.length > 0 && (
+              <span
+                className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
+                  view === 'dashboard'
+                    ? 'bg-accent-600 text-white'
+                    : 'bg-white/20 text-white'
+                }`}
+              >
+                {tiles.length}
+              </span>
+            )}
+          </button>
+        </nav>
+        <div className="flex items-center gap-2">
           <ThemeToggle />
         </div>
       </header>
 
+      {view === 'dashboard' ? (
+        <Dashboard
+          tiles={tiles}
+          loading={tilesLoading}
+          error={tilesError}
+          busyTileId={pinBusyId}
+          onUnpin={handleUnpinTile}
+          onOpenConversation={(convId) => {
+            setView('analyze')
+            handleReopenConversation(convId)
+          }}
+        />
+      ) : (
       <div className="relative flex min-h-0 flex-1">
         {/* Mobile drawer backdrop — click to dismiss the library. */}
         {sidebarOpen && (
@@ -534,6 +680,9 @@ export default function Home() {
               busy={busy}
               conversationId={conversation?.id ?? null}
               onAsk={handleAsk}
+              pinnedTileFor={pinnedTileFor}
+              onTogglePin={handleTogglePin}
+              pinBusyId={pinBusyId}
             />
           )}
         </main>
@@ -552,6 +701,7 @@ export default function Home() {
           onUploadAndAttach={handleUploadAndAttach}
         />
       </div>
+      )}
     </div>
   )
 }

@@ -40,6 +40,12 @@ interface ChatMessageProps {
   // Phase-4: whether this is the last turn — the inline clarify-reply box only
   // renders on the latest clarifying question (older ones are read-only).
   isLast?: boolean
+  // Phase-6: dashboard pinning. `pinnedTileId` is the id of the tile pinning
+  // this answer (null/undefined when unpinned); `onTogglePin` pins or unpins.
+  // `pinBusy` disables the control mid-request.
+  pinnedTileId?: string | null
+  onTogglePin?: (messageId: string, pinnedTileId: string | null) => void
+  pinBusy?: boolean
 }
 
 export function ChatMessage({
@@ -47,6 +53,9 @@ export function ChatMessage({
   conversationId,
   onFollowup,
   isLast,
+  pinnedTileId,
+  onTogglePin,
+  pinBusy,
 }: ChatMessageProps) {
   const [showCode, setShowCode] = useState(false)
   const [exporting, setExporting] = useState<null | 'csv' | 'png'>(null)
@@ -197,6 +206,44 @@ export function ChatMessage({
               data-testid="answer-toolbar"
               className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400"
             >
+              {/* Pin to dashboard — only on a COMPLETED assistant answer with a
+                  real message id. Flips between outline "Pin" and filled
+                  "Pinned"; clicking a pinned answer unpins it. */}
+              {onTogglePin &&
+                turn.answer.message_id &&
+                turn.answer.status === 'completed' &&
+                (() => {
+                  const pinned = Boolean(pinnedTileId)
+                  return (
+                    <button
+                      type="button"
+                      data-testid="pin-button"
+                      {...(pinned ? { 'data-pinned': 'true' } : {})}
+                      aria-pressed={pinned}
+                      aria-label={
+                        pinned ? 'Unpin from dashboard' : 'Pin to dashboard'
+                      }
+                      disabled={pinBusy}
+                      onClick={() =>
+                        onTogglePin(
+                          turn.answer!.message_id,
+                          pinnedTileId ?? null,
+                        )
+                      }
+                      className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${
+                        pinned
+                          ? 'border-accent-500 bg-accent-600 text-white shadow-sm hover:bg-accent-700 dark:border-accent-400 dark:bg-accent-500 dark:hover:bg-accent-600'
+                          : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {pinned ? (
+                        <span data-testid="pinned">📌 Pinned</span>
+                      ) : (
+                        <span>📍 Pin to dashboard</span>
+                      )}
+                    </button>
+                  )
+                })()}
               {turn.answer.code && (
                 <button
                   type="button"

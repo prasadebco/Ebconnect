@@ -10,6 +10,8 @@ A single-origin web app: a Next.js UI (static-exported, served by FastAPI at `:8
 >
 > **UI note:** the shipped frontend is a **Modern-SaaS redesign** with a light/dark **theme toggle** (see `spec/ui.md`); all states are designed to read as intentional in both themes.
 
+> **Phase 6 note (Pinnable Dashboard + collapsible sidebar):** adds one table `DashboardTile` (SQLite, via a new Alembic migration off the current head) holding a snapshot of a pinned answer (prose/chart/table/context) plus three (optionally four) bare-object endpoints under `/dashboard/tiles`. The Dashboard is a **client-side in-SPA view switch** (header nav Analyze | Dashboard) — no new server route, so the Next.js static export at `basePath '/app'` is unaffected. Tiles render from the stored snapshot with **no Gemini call and no query re-run**, so the free-tier `gemini-2.5-flash` constraint and the privacy model are untouched. The left sidebar becomes a collapsible icon rail (CSS/state only; all existing test-ids stay in the DOM). No change to the agent graph, the LLM provider/model, or the Stack below.
+
 ## Component Map
 
 ```

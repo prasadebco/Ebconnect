@@ -146,3 +146,23 @@ export type StreamEvent =
   | { type: 'usage'; data: UsageEvent }
   | { type: 'answer'; data: AnswerEvent }
   | { type: 'error'; data: ErrorEvent }
+
+// ── Phase 6: Pinnable Dashboard ────────────────────────────────────────
+// A pinned answer snapshot. POST /dashboard/tiles returns a bare object;
+// GET /dashboard/tiles returns a bare array. Read defensively — the backend
+// snapshots prose/chart/table/context at pin time so the tile renders
+// without re-running the query.
+export interface DashboardTile {
+  id: string
+  message_id: string
+  conversation_id: string
+  dataset_id?: string
+  dataset_name?: string
+  title: string
+  content: string
+  chart?: ChartSpec | null
+  table?: TableSpec | null
+  confidence?: 'high' | 'medium' | 'low' | string | null
+  display_order?: number
+  created_at?: string
+}

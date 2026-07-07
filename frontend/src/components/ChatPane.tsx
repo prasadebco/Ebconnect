@@ -9,6 +9,11 @@ interface Props {
   busy: boolean
   conversationId: string | null
   onAsk: (question: string) => void
+  // Phase-6 pin plumbing. Given a message id, return the pinning tile id (or
+  // null) so the answer card can reflect pinned state; onTogglePin pins/unpins.
+  pinnedTileFor?: (messageId: string) => string | null
+  onTogglePin?: (messageId: string, pinnedTileId: string | null) => void
+  pinBusyId?: string | null
 }
 
 export function ChatPane({
@@ -17,6 +22,9 @@ export function ChatPane({
   busy,
   conversationId,
   onAsk,
+  pinnedTileFor,
+  onTogglePin,
+  pinBusyId,
 }: Props) {
   const [value, setValue] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -60,6 +68,15 @@ export function ChatPane({
                 conversationId={conversationId}
                 isLast={i === turns.length - 1}
                 onFollowup={busy ? undefined : onAsk}
+                pinnedTileId={
+                  pinnedTileFor && t.answer?.message_id
+                    ? pinnedTileFor(t.answer.message_id)
+                    : null
+                }
+                onTogglePin={onTogglePin}
+                pinBusy={
+                  !!pinBusyId && pinBusyId === t.answer?.message_id
+                }
               />
             </div>
           ))

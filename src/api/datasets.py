@@ -17,6 +17,7 @@ from db.models import (
     Conversation,
     ConversationDataset,
     Message,
+    DashboardTile,
 )
 from profiling.profiler import profile_csv, profile_xlsx
 
@@ -205,6 +206,10 @@ def delete_dataset(dataset_id: str, session: Session = Depends(get_session)) -> 
         .all()
     ]
     if conv_ids:
+        # pinned dashboard tiles for these conversations (no orphans)
+        session.query(DashboardTile).filter(
+            DashboardTile.conversation_id.in_(conv_ids)
+        ).delete(synchronize_session=False)
         session.query(Message).filter(Message.conversation_id.in_(conv_ids)).delete(
             synchronize_session=False
         )

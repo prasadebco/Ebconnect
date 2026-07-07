@@ -100,17 +100,37 @@ One turn in a conversation — a user question or an agent answer, with per-quer
 | error_message | text | no | Set when `status = failed` |
 | created_at | datetime | yes | Turn time |
 
+### Entity: DashboardTile
+
+A pinned snapshot of an assistant answer, rendered on the Dashboard without re-running the query (Phase 6).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | str (uuid) | yes | Primary key |
+| message_id | str (FK Message) | yes | The assistant message that was pinned (cascade delete) |
+| conversation_id | str (FK Conversation) | yes | Owning conversation (for deep-link back; cascade delete) |
+| dataset_id | str (FK Dataset) | no | Dataset the answer was over (null if source deleted) |
+| dataset_name | str | yes | Snapshotted dataset name (survives dataset rename/delete) |
+| title | str | yes | Tile title — the question text |
+| content | text | yes | Snapshotted prose answer |
+| chart | JSON | no | Snapshotted Recharts spec (renders without re-run) |
+| table | JSON | no | Snapshotted `{columns, rows}` table |
+| confidence | str | no | Snapshotted answer confidence (`high`\|`medium`\|`low`) |
+| display_order | int | yes | Ordering key (default 0; newest-first fallback by `created_at`) |
+| created_at | datetime | yes | Pin time |
+
 ### Relationships
 
 - `Dataset` 1—N `DatasetSheet` 1—N `DatasetColumn` (CSV: columns may hang directly off `Dataset` with null `sheet_id`).
 - `Conversation` N—1 `Dataset` (primary) and N—M `Dataset` via `ConversationDataset` (Phase 3 joins).
 - `Conversation` 1—N `Message` (full ordered chat history — the conversation memory loaded into agent state).
+- `Message` 1—N `DashboardTile` and `Conversation` 1—N `DashboardTile` (a pinned answer snapshot; both FKs cascade-delete so removing a conversation/message removes its tiles — Phase 6).
 
 ## Data Lifecycle
 
-- **Create:** `Dataset` (+ sheets/columns) on upload+profile; `Conversation` on chat open; `Message` on every user turn and every agent turn.
-- **Update:** `last_used_at` on open/new-turn; a `Message` row is written once the run finalizes (status/telemetry).
-- **Delete:** deleting a `Dataset` (Phase 2) cascades its sheets/columns and removes the raw file + cache from disk; deleting a `Conversation` cascades its messages.
+- **Create:** `Dataset` (+ sheets/columns) on upload+profile; `Conversation` on chat open; `Message` on every user turn and every agent turn; `DashboardTile` when a completed assistant answer is pinned (Phase 6).
+- **Update:** `last_used_at` on open/new-turn; a `Message` row is written once the run finalizes (status/telemetry); `DashboardTile.display_order` on reorder (optional, Phase 6).
+- **Delete:** deleting a `Dataset` (Phase 2) cascades its sheets/columns and removes the raw file + cache from disk; deleting a `Conversation` cascades its messages and their `DashboardTile`s; unpinning removes a `DashboardTile` directly.
 - **Persistence:** everything survives process restarts (Phase 2 success criterion). Nothing is time-boxed or auto-archived — no formal audit log (out of scope).
 
 ## Sensitive Data

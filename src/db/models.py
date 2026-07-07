@@ -119,3 +119,28 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, default=_now
     )
+
+
+class DashboardTile(Base):
+    __tablename__ = "dashboard_tiles"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=_uuid)
+    message_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
+    )
+    conversation_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    dataset_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True
+    )
+    dataset_name: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    title: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    chart: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    table: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    confidence: Mapped[str | None] = mapped_column(Text, nullable=True)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=_now
+    )
