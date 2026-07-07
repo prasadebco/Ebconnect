@@ -21,7 +21,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={label}
       title={label}
-      className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50 hover:text-accent-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 dark:text-slate-400 dark:ring-slate-700 dark:hover:bg-slate-800 dark:hover:text-accent-300"
+      className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-white/85 ring-1 ring-inset ring-white/25 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
     >
       <span
         aria-hidden="true"

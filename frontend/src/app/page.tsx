@@ -442,8 +442,12 @@ export default function Home() {
     : []
 
   return (
-    <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="z-10 flex items-center gap-3 border-b border-slate-200 bg-white bg-gradient-to-r from-white to-accent-50/40 px-6 py-3 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-900">
+    <div className="flex h-screen flex-col bg-accent-50 dark:bg-slate-950">
+      {/* Blue-forward corporate top bar. A SOLID Ebco-blue background-color
+          base (bg-accent-700) is kept under the subtle gradient so the phase-1
+          E2E guard — which asserts the <header> computed background-color is
+          NOT transparent — always passes. */}
+      <header className="z-10 flex items-center gap-3 border-b border-accent-900/40 bg-accent-700 bg-gradient-to-r from-accent-700 to-accent-800 px-6 py-3 shadow-md dark:border-black/30 dark:from-accent-800 dark:to-accent-900">
         {/* Mobile-only: open the library drawer. Hidden on md+ where the
             sidebar is always docked. */}
         <button
@@ -453,28 +457,32 @@ export default function Home() {
           aria-label={sidebarOpen ? 'Close library' : 'Open library'}
           aria-expanded={sidebarOpen}
           aria-controls="library-sidebar"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50 hover:text-accent-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 md:hidden dark:text-slate-400 dark:ring-slate-700 dark:hover:bg-slate-800 dark:hover:text-accent-300"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/80 ring-1 ring-inset ring-white/25 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 md:hidden"
         >
           <span aria-hidden="true" className="text-base leading-none">
             ☰
           </span>
         </button>
         {/* Static-export app is served under basePath '/app', so plain <img>
-            src is NOT auto-prefixed — reference the asset at /app/…. */}
-        <img
-          src="/app/ebco-logo.png"
-          alt="Ebco Pvt Ltd — Simplifying lives."
-          className="h-11 w-auto shrink-0 dark:brightness-0 dark:invert"
-        />
+            src is NOT auto-prefixed — reference the asset at /app/…. The blue
+            oval logo sits on a white rounded plate so it reads crisply on the
+            Ebco-blue bar in BOTH themes. */}
+        <span className="flex shrink-0 items-center rounded-lg bg-white px-2 py-1 shadow-sm ring-1 ring-black/5">
+          <img
+            src="/app/ebco-logo.png"
+            alt="Ebco Pvt Ltd — Simplifying lives."
+            className="h-9 w-auto"
+          />
+        </span>
         <span
-          className="h-6 w-px shrink-0 bg-slate-200 dark:bg-slate-700"
+          className="h-6 w-px shrink-0 bg-white/25"
           aria-hidden="true"
         />
-        <span className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          Ebco AI <span className="text-brand-500">—</span> Data Analyst
+        <span className="text-[15px] font-semibold tracking-tight text-white">
+          Ebco AI <span className="text-brand-400">—</span> Data Analyst
         </span>
-        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-medium text-white ring-1 ring-inset ring-white/25">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
           Local &amp; private
         </span>
         <div className="ml-auto flex items-center gap-2">
