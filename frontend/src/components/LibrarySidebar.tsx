@@ -76,14 +76,10 @@ export function LibrarySidebar({
   const expanded = mobileOpen || pinnedOpen || hovered
 
   function handleSelectDataset(id: string) {
-    // Pin the panel open so the newly-active dataset's conversations are
-    // visible + reachable (keyboard and tests) after selection.
-    setPinnedOpen(true)
-    try {
-      localStorage.setItem(PIN_KEY, '1')
-    } catch {
-      // ignore
-    }
+    // Do NOT force-pin the rail open on selection — that defeated collapse
+    // (once you picked a dataset the rail stayed expanded forever). The rail
+    // now collapses on mouse-leave unless the user explicitly pinned it open
+    // via the pin toggle. Conversations remain reachable on hover/expand.
     onSelectDataset(id)
   }
 
