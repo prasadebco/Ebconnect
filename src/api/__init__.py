@@ -8,15 +8,24 @@ from fastapi.staticfiles import StaticFiles
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     from db.session import init_db
+    from config.settings import get_settings
+    from observability.events import configure_logging
+
+    try:
+        configure_logging(get_settings().log_level)
+    except Exception:  # noqa: BLE001 — logging must never block startup
+        pass
     init_db()
     yield
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Agent", version="0.1.0", lifespan=_lifespan)
-    from api import health, runs
+    from api import health, datasets, conversations, dashboard
     app.include_router(health.router)
-    app.include_router(runs.router)
+    app.include_router(datasets.router)
+    app.include_router(conversations.router)
+    app.include_router(dashboard.router)
 
     # Serve the built Next.js static export at /app
     # Run `cd frontend && pnpm build` to generate frontend/out/ before starting.

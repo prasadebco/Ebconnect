@@ -1,0 +1,107 @@
+'use client'
+
+import { useRef, useState } from 'react'
+
+interface Props {
+  onFile: (file: File) => void
+  loading: boolean
+  error: string | null
+}
+
+export function UploadDropzone({ onFile, loading, error }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [dragActive, setDragActive] = useState(false)
+
+  function pick(file: File | undefined | null) {
+    if (!file) return
+    onFile(file)
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-2xl px-6 py-10">
+      <h2 className="mb-2 text-[28px] font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-100">
+        Ask your spreadsheet a question
+      </h2>
+      <p className="mb-7 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+        Upload a CSV or Excel workbook. It is profiled and analyzed locally —
+        only the profile and a small sample ever leave your server.
+      </p>
+
+      <div
+        data-testid="dropzone"
+        role="button"
+        tabIndex={0}
+        aria-label="Upload a CSV or Excel file — drop a file here or activate to browse"
+        aria-disabled={loading}
+        aria-busy={loading}
+        onClick={() => !loading && inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && !loading)
+            inputRef.current?.click()
+        }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragActive(true)
+        }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragActive(false)
+          if (!loading) pick(e.dataTransfer.files?.[0])
+        }}
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-16 text-center transition ${
+          dragActive
+            ? 'border-accent-500 bg-accent-50 dark:border-accent-400 dark:bg-accent-500/10'
+            : 'border-slate-300 bg-white hover:border-accent-400 hover:bg-accent-50/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-accent-400 dark:hover:bg-accent-500/5'
+        } ${loading ? 'pointer-events-none opacity-60' : ''}`}
+      >
+        <input
+          ref={inputRef}
+          data-testid="file-input"
+          type="file"
+          accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          className="hidden"
+          onChange={(e) => pick(e.target.files?.[0])}
+        />
+        {loading ? (
+          <div data-testid="upload-loading" className="flex flex-col items-center">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">Profiling your file…</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-50 text-3xl dark:bg-accent-500/10">
+              📄
+            </div>
+            <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-200">
+              Drop a CSV or Excel file here, or click to browse
+            </p>
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              CSV or .xlsx up to ~100MB
+            </p>
+          </>
+        )}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+        <span className="inline-flex items-center">
+          Multi-sheet Excel workbooks and multi-file joins are supported once a
+          dataset is open.
+        </span>
+      </div>
+
+      {error && (
+        <div
+          data-testid="upload-error"
+          role="alert"
+          className="mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+        >
+          <span aria-hidden="true" className="mt-px shrink-0">
+            ⚠
+          </span>
+          {error}
+        </div>
+      )}
+    </div>
+  )
+}

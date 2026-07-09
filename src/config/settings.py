@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="")
     gemini_api_key: str = Field(default="")
 
+    # Analysis loop tuning
+    uploads_dir: str = Field(default="data/uploads")
+    sample_rows: int = Field(default=20)      # rows sampled to the LLM (never full data)
+    max_attempts: int = Field(default=3)      # iterate/self-correct cap
+    exec_timeout_s: int = Field(default=25)   # sandbox wall-clock timeout (seconds)
+    max_upload_bytes: int = Field(default=100 * 1024 * 1024)  # ~100MB guard
+
+    # Resilience — Gemini transient-error retry/backoff
+    llm_max_retries: int = Field(default=3)       # attempts per LLM call on transient errors
+    llm_retry_base_s: float = Field(default=0.5)  # exponential-backoff base delay
+
 
 _settings: Settings | None = None
 
