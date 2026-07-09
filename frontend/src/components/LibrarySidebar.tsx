@@ -50,25 +50,20 @@ export function LibrarySidebar({
   const [pinnedOpen, setPinnedOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
 
-  // Restore the click-pinned rail state across sessions.
+  // The rail ALWAYS starts collapsed and is hover-driven; the explicit pin is
+  // a session-only lock (not persisted), so a stale flag can never keep it
+  // stuck open. Proactively clear any pin flag written by older builds.
   useEffect(() => {
     try {
-      if (localStorage.getItem(PIN_KEY) === '1') setPinnedOpen(true)
+      localStorage.removeItem(PIN_KEY)
     } catch {
       // ignore storage errors
     }
   }, [])
 
   function togglePinned() {
-    setPinnedOpen((v) => {
-      const next = !v
-      try {
-        localStorage.setItem(PIN_KEY, next ? '1' : '0')
-      } catch {
-        // ignore
-      }
-      return next
-    })
+    // Session-only — intentionally NOT persisted to localStorage.
+    setPinnedOpen((v) => !v)
   }
 
   // On mobile the drawer always shows the full panel; on md+ it expands on
