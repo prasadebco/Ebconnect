@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ConversationSummary, DatasetSummary } from '@/lib/types'
 import { ConversationList } from './ConversationList'
 
@@ -28,6 +28,9 @@ interface Props {
   onSelectDataset: (id: string) => void
   onDeleteDataset: (id: string, name: string) => void
   onSelectConversation: (id: string) => void
+  // Always-available "add new dataset for analysis" upload entry point.
+  onUploadFile: (file: File) => void
+  uploading?: boolean
 }
 
 // Phase-6: the REAL persistent library, now as a collapsible ICON RAIL on md+.
@@ -46,7 +49,22 @@ export function LibrarySidebar({
   onSelectDataset,
   onDeleteDataset,
   onSelectConversation,
+  onUploadFile,
+  uploading = false,
 }: Props) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function pickFile() {
+    fileInputRef.current?.click()
+  }
+
+  function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) onUploadFile(file)
+    // reset so choosing the same file again re-triggers change
+    e.target.value = ''
+  }
+
   const [pinnedOpen, setPinnedOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
 
@@ -106,6 +124,18 @@ export function LibrarySidebar({
               )}
               <button
                 type="button"
+                data-testid="sidebar-upload"
+                onClick={pickFile}
+                disabled={uploading}
+                aria-label="Add a new dataset for analysis"
+                title="Add a new dataset (CSV or Excel)"
+                className="inline-flex h-7 items-center gap-1 rounded-lg bg-white px-2.5 text-[12px] font-semibold text-accent-800 shadow-sm transition hover:bg-white/90 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                <span aria-hidden="true">＋</span>
+                {uploading ? 'Adding…' : 'New'}
+              </button>
+              <button
+                type="button"
                 data-testid="sidebar-expand"
                 onClick={togglePinned}
                 aria-label={pinnedOpen ? 'Collapse library' : 'Keep library open'}
@@ -117,17 +147,38 @@ export function LibrarySidebar({
             </div>
           </>
         ) : (
-          <button
-            type="button"
-            data-testid="sidebar-expand"
-            onClick={togglePinned}
-            aria-label="Expand library"
-            aria-pressed={pinnedOpen}
-            className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-lg text-white/80 ring-1 ring-inset ring-white/15 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          >
-            <span aria-hidden="true">📚</span>
-          </button>
+          <div className="mx-auto flex flex-col items-center gap-2">
+            <button
+              type="button"
+              data-testid="sidebar-upload"
+              onClick={pickFile}
+              disabled={uploading}
+              aria-label="Add a new dataset for analysis"
+              title="Add a new dataset (CSV or Excel)"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-lg font-bold text-accent-800 shadow-sm transition hover:bg-white/90 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            >
+              <span aria-hidden="true">＋</span>
+            </button>
+            <button
+              type="button"
+              data-testid="sidebar-expand"
+              onClick={togglePinned}
+              aria-label="Expand library"
+              aria-pressed={pinnedOpen}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-lg text-white/80 ring-1 ring-inset ring-white/15 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            >
+              <span aria-hidden="true">📚</span>
+            </button>
+          </div>
         )}
+        <input
+          ref={fileInputRef}
+          data-testid="sidebar-file-input"
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          onChange={onFileChosen}
+          className="hidden"
+        />
       </div>
 
       <div
@@ -155,8 +206,17 @@ export function LibrarySidebar({
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-2xl ring-1 ring-inset ring-white/15">
                 📁
               </div>
-              Upload a CSV to get started. Your datasets collect here across
-              sessions.
+              Upload a CSV or Excel file to get started. Your datasets collect
+              here across sessions.
+              <button
+                type="button"
+                onClick={pickFile}
+                disabled={uploading}
+                className="mx-auto mt-4 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-[13px] font-semibold text-accent-800 shadow-sm transition hover:bg-white/90 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                <span aria-hidden="true">＋</span>
+                {uploading ? 'Adding…' : 'Add dataset'}
+              </button>
             </div>
           ) : (
             // Collapsed: keep the empty marker in the DOM (sr-only) so its

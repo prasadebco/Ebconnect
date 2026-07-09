@@ -662,6 +662,11 @@ export default function Home() {
             setSidebarOpen(false)
             handleReopenConversation(id)
           }}
+          onUploadFile={(file) => {
+            setSidebarOpen(false)
+            handleUpload(file)
+          }}
+          uploading={uploading}
         />
 
         <main className="flex min-w-0 flex-1 flex-col">
